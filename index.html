@@ -3,130 +3,212 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="AmericaEsTuya: un recorrido por la historia, la cultura y las personalidades más recordadas de América." />
-  <title>AmericaEsTuya</title>
+  <meta name="description" content="AmericaEsTuya: un viaje por la historia, la cultura y las personas que viven en la memoria de América." />
+  <meta name="theme-color" content="#071f1a" />
+  <title>AmericaEsTuya — Un continente, millones de historias</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="hero">
+  <header class="hero" id="inicio">
+    <div class="hero-glow hero-glow-one"></div>
+    <div class="hero-glow hero-glow-two"></div>
+
     <nav class="nav container">
-      <div class="brand">America<span>EsTuya</span></div>
+      <a class="brand" href="#inicio" aria-label="AmericaEsTuya, inicio">
+        <span class="brand-mark">A</span>
+        <span>America<strong>EsTuya</strong></span>
+      </a>
       <div class="nav-links">
-        <a href="#personalidades">Personalidades</a>
+        <a href="#personalidades">Rostros</a>
         <a href="#historia">Historia</a>
-        <a href="#proyecto">El proyecto</a>
+        <a href="#manifiesto">Nuestra idea</a>
       </div>
+      <a class="nav-pill" href="#personalidades">Explorar</a>
     </nav>
 
     <div class="hero-content container">
-      <p class="eyebrow">UN CONTINENTE · MUCHAS HISTORIAS</p>
-      <h1>América es tuya</h1>
-      <p class="lead">
-        Un recorrido por América desde su formación, sus pueblos y su historia,
-        hasta las figuras que quedaron para siempre en la memoria de cada nación.
-      </p>
-      <a class="button" href="#personalidades">Comenzar el viaje</a>
+      <div class="hero-copy reveal">
+        <p class="eyebrow">DE ALASKA A TIERRA DEL FUEGO</p>
+        <h1>Un continente.<br><span>Millones de historias.</span></h1>
+        <p class="lead">
+          América no es solo un lugar en el mapa. Es memoria, música, lucha,
+          ciencia, sueños y personas que dejaron una huella imposible de borrar.
+        </p>
+        <div class="hero-actions">
+          <a class="button primary" href="#personalidades">Conoce sus rostros</a>
+          <a class="button ghost" href="#historia">Viaja en el tiempo ↓</a>
+        </div>
+      </div>
+
+      <div class="hero-orbit reveal" aria-hidden="true">
+        <div class="orbit-ring ring-one"></div>
+        <div class="orbit-ring ring-two"></div>
+        <div class="continent-core">
+          <span class="america-word">AMÉRICA</span>
+          <span class="america-sub">es tuya</span>
+        </div>
+        <span class="orbit-dot dot-1">●</span>
+        <span class="orbit-dot dot-2">●</span>
+        <span class="orbit-dot dot-3">●</span>
+      </div>
+    </div>
+
+    <div class="hero-footer container">
+      <span>35 países · una memoria compartida</span>
+      <span class="scroll-cue">DESLIZA PARA DESCUBRIR</span>
     </div>
   </header>
 
   <main>
-    <section id="personalidades" class="section container">
-      <div class="section-heading">
-        <p class="eyebrow">MEMORIA DE AMÉRICA</p>
-        <h2>Una personalidad inolvidable de cada país</h2>
+    <section class="intro-strip">
+      <div class="container intro-grid reveal">
+        <p class="big-quote">“Cada país tiene un rostro que vive para siempre en su gente.”</p>
         <p>
-          Figuras políticas, culturales, científicas, deportivas o artísticas
-          ampliamente conocidas y recordadas por su pueblo. Esta es una selección
-          inicial que iremos revisando país por país.
+          Queremos encontrarlo sin importar si vino de la política, la música,
+          el deporte, la literatura, la ciencia o la vida popular. No buscamos
+          simplemente al más famoso: buscamos a quien una nación reconoce como suyo.
         </p>
-      </div>
-
-      <div class="cards">
-        <article class="card">
-          <div class="flag">🇨🇺</div>
-          <h3>Cuba</h3>
-          <p class="person">José Martí</p>
-          <p>Poeta, escritor y figura central de la historia cubana.</p>
-        </article>
-
-        <article class="card">
-          <div class="flag">🇨🇴</div>
-          <h3>Colombia</h3>
-          <p class="person">Gabriel García Márquez</p>
-          <p>Escritor universal y Premio Nobel de Literatura.</p>
-        </article>
-
-        <article class="card">
-          <div class="flag">🇧🇷</div>
-          <h3>Brasil</h3>
-          <p class="person">Pelé</p>
-          <p>Una de las figuras deportivas más reconocidas de la historia.</p>
-        </article>
-
-        <article class="card">
-          <div class="flag">🇦🇷</div>
-          <h3>Argentina</h3>
-          <p class="person">Lionel Messi</p>
-          <p>Figura mundial del fútbol y símbolo deportivo argentino.</p>
-        </article>
-
-        <article class="card">
-          <div class="flag">🇲🇽</div>
-          <h3>México</h3>
-          <p class="person">Pedro Infante</p>
-          <p>Actor y cantante convertido en icono popular mexicano.</p>
-        </article>
-
-        <article class="card">
-          <div class="flag">🇺🇸</div>
-          <h3>Estados Unidos</h3>
-          <p class="person">Abraham Lincoln</p>
-          <p>Uno de los presidentes más reconocidos de la historia estadounidense.</p>
-        </article>
       </div>
     </section>
 
-    <section id="historia" class="timeline-section">
+    <section id="personalidades" class="section personalities-section">
       <div class="container">
-        <div class="section-heading light">
-          <p class="eyebrow">DESDE EL PRINCIPIO</p>
-          <h2>La historia de América comienza mucho antes de los países</h2>
+        <div class="section-heading reveal">
+          <div>
+            <p class="eyebrow">LOS ROSTROS QUE NO SE OLVIDAN</p>
+            <h2>Personas que se volvieron parte de un país.</h2>
+          </div>
           <p>
-            Nuestro recorrido partirá de la formación geológica del continente,
-            continuará con sus primeros pobladores, civilizaciones originarias,
-            colonización, independencias y llegará hasta la América actual.
+            Esta es nuestra primera selección. La iremos ampliando y revisando
+            hasta representar cada nación de América con respeto, historia y emoción.
+          </p>
+        </div>
+
+        <div class="cards">
+          <article class="card reveal" data-country="Cuba">
+            <div class="card-top"><span class="flag">🇨🇺</span><span class="number">01</span></div>
+            <div class="card-body">
+              <p class="country">CUBA</p>
+              <h3>José Martí</h3>
+              <p>Poeta, pensador y símbolo nacional cuya obra sigue presente en la identidad cubana.</p>
+            </div>
+            <div class="card-foot"><span>Literatura · Historia</span><span>→</span></div>
+          </article>
+
+          <article class="card reveal" data-country="Colombia">
+            <div class="card-top"><span class="flag">🇨🇴</span><span class="number">02</span></div>
+            <div class="card-body">
+              <p class="country">COLOMBIA</p>
+              <h3>Gabriel García Márquez</h3>
+              <p>El escritor que convirtió historias del Caribe colombiano en literatura universal.</p>
+            </div>
+            <div class="card-foot"><span>Literatura · Cultura</span><span>→</span></div>
+          </article>
+
+          <article class="card reveal" data-country="Brasil">
+            <div class="card-top"><span class="flag">🇧🇷</span><span class="number">03</span></div>
+            <div class="card-body">
+              <p class="country">BRASIL</p>
+              <h3>Pelé</h3>
+              <p>Un nombre que atravesó fronteras y convirtió el fútbol brasileño en leyenda mundial.</p>
+            </div>
+            <div class="card-foot"><span>Deporte · Cultura popular</span><span>→</span></div>
+          </article>
+
+          <article class="card reveal" data-country="Argentina">
+            <div class="card-top"><span class="flag">🇦🇷</span><span class="number">04</span></div>
+            <div class="card-body">
+              <p class="country">ARGENTINA</p>
+              <h3>Lionel Messi</h3>
+              <p>Talento, perseverancia y una historia deportiva que millones de argentinos sienten propia.</p>
+            </div>
+            <div class="card-foot"><span>Deporte · Identidad</span><span>→</span></div>
+          </article>
+
+          <article class="card reveal" data-country="México">
+            <div class="card-top"><span class="flag">🇲🇽</span><span class="number">05</span></div>
+            <div class="card-body">
+              <p class="country">MÉXICO</p>
+              <h3>Pedro Infante</h3>
+              <p>Actor y cantante cuya voz, películas y carisma permanecen en la memoria popular mexicana.</p>
+            </div>
+            <div class="card-foot"><span>Cine · Música</span><span>→</span></div>
+          </article>
+
+          <article class="card reveal" data-country="Estados Unidos">
+            <div class="card-top"><span class="flag">🇺🇸</span><span class="number">06</span></div>
+            <div class="card-body">
+              <p class="country">ESTADOS UNIDOS</p>
+              <h3>Abraham Lincoln</h3>
+              <p>Una de las figuras presidenciales más reconocidas y perdurables de la historia del país.</p>
+            </div>
+            <div class="card-foot"><span>Política · Historia</span><span>→</span></div>
+          </article>
+        </div>
+
+        <div class="coming reveal">
+          <span class="pulse"></span>
+          <strong>Próximamente:</strong> los 35 países de América, uno por uno.
+        </div>
+      </div>
+    </section>
+
+    <section id="historia" class="history-section">
+      <div class="container history-wrap">
+        <div class="history-intro reveal">
+          <p class="eyebrow">ANTES DE LAS BANDERAS</p>
+          <h2>Para entender América, hay que viajar mucho más atrás.</h2>
+          <p>
+            Nuestra historia no comenzará en 1492 ni con las independencias.
+            Empezará con la tierra misma: océanos, placas tectónicas, migraciones,
+            pueblos y civilizaciones que existieron mucho antes de las fronteras actuales.
           </p>
         </div>
 
         <div class="timeline">
-          <div><strong>1</strong><span>Formación del continente</span></div>
-          <div><strong>2</strong><span>Primeros habitantes</span></div>
-          <div><strong>3</strong><span>Civilizaciones originarias</span></div>
-          <div><strong>4</strong><span>Encuentro entre mundos</span></div>
-          <div><strong>5</strong><span>Independencias</span></div>
-          <div><strong>6</strong><span>América contemporánea</span></div>
+          <article class="timeline-item reveal"><span>01</span><div><small>HACE MILLONES DE AÑOS</small><h3>Se forma el continente</h3><p>La geología escribe el primer capítulo.</p></div></article>
+          <article class="timeline-item reveal"><span>02</span><div><small>PRIMEROS POBLADORES</small><h3>Comienza la historia humana</h3><p>Migraciones, adaptación y nuevas culturas.</p></div></article>
+          <article class="timeline-item reveal"><span>03</span><div><small>GRANDES CIVILIZACIONES</small><h3>Ciudades, conocimiento y poder</h3><p>Mayas, mexicas, incas y muchos otros pueblos.</p></div></article>
+          <article class="timeline-item reveal"><span>04</span><div><small>DESDE 1492</small><h3>Dos mundos se encuentran</h3><p>Conquista, intercambio, resistencia y transformación.</p></div></article>
+          <article class="timeline-item reveal"><span>05</span><div><small>SIGLOS XVIII–XIX</small><h3>Nacen nuevas naciones</h3><p>Revoluciones e independencias cambian el mapa.</p></div></article>
+          <article class="timeline-item reveal"><span>06</span><div><small>HOY</small><h3>Una América que sigue cambiando</h3><p>35 países y más de mil millones de historias humanas.</p></div></article>
         </div>
       </div>
     </section>
 
-    <section id="proyecto" class="section container project">
-      <div>
-        <p class="eyebrow">EL PROYECTO</p>
-        <h2>Un sitio que crecerá con su gente</h2>
+    <section id="manifiesto" class="manifesto-section">
+      <div class="container manifesto reveal">
+        <p class="eyebrow">NUESTRA IDEA</p>
+        <h2>No queremos hacer otra enciclopedia.</h2>
+        <p class="manifesto-main">
+          Queremos construir un lugar donde alguien entre por curiosidad y termine
+          sintiendo que conoce mejor a América —y que América también le pertenece un poco más.
+        </p>
+        <div class="manifesto-grid">
+          <div><span>01</span><h3>Historia viva</h3><p>Contada de forma visual, clara y emocionante.</p></div>
+          <div><span>02</span><h3>Voces de cada país</h3><p>Personas, cultura y memoria popular.</p></div>
+          <div><span>03</span><h3>Participación</h3><p>Más adelante, la gente podrá proponer, votar y contar.</p></div>
+        </div>
       </div>
-      <p>
-        AmericaEsTuya nace como un proyecto abierto para conocer mejor nuestro
-        continente. Más adelante podremos añadir mapas interactivos, líneas del
-        tiempo, votaciones, biografías, fotografías y participación de visitantes.
-      </p>
+    </section>
+
+    <section class="final-call">
+      <div class="container reveal">
+        <p>Esto apenas comienza.</p>
+        <h2>35 países.<br>Una sola América.</h2>
+        <a class="button primary" href="#inicio">Volver al comienzo ↑</a>
+      </div>
     </section>
   </main>
 
   <footer>
     <div class="container footer-inner">
-      <strong>AmericaEsTuya</strong>
-      <span>Hecho para descubrir y compartir América.</span>
+      <a class="brand footer-brand" href="#inicio"><span class="brand-mark">A</span><span>America<strong>EsTuya</strong></span></a>
+      <p>Hecho para descubrir, recordar y compartir América.</p>
+      <span>Proyecto en construcción · 2026</span>
     </div>
   </footer>
+
+  <script src="script.js"></script>
 </body>
 </html>
