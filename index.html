@@ -1,129 +1,125 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="AmericaEsTuya: un viaje por la historia, la cultura y las personas que viven en la memoria de América." />
-  <meta name="theme-color" content="#071f1a" />
-  <title>AmericaEsTuya — América es nuestra. América es tuya.</title>
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#071d18">
+<title>AmericaEsTuya — El valor de América</title>
+<style>
+:root{--bg:#071d18;--bg2:#0b2b23;--paper:#f4ecdc;--ink:#10241d;--gold:#e9bd63;--soft:#d8e7df;--line:rgba(255,255,255,.12)}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink)}.wrap{width:min(1180px,92%);margin:auto}.hero{position:relative;overflow:hidden;background:radial-gradient(circle at 80% 15%,rgba(233,189,99,.19),transparent 25%),linear-gradient(145deg,#061713,#0c3228 70%,#123d31);color:white;padding-bottom:74px}.hero:before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:46px 46px;pointer-events:none}.nav{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:24px 0}.brand{display:flex;align-items:center;gap:10px;font-size:1.15rem}.logo{display:grid;place-items:center;width:40px;height:40px;border-radius:13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);font:700 1.35rem Georgia}.brand b{color:var(--gold)}.status{font-size:.78rem;color:#bcd0c7;display:flex;gap:8px;align-items:center}.dot{width:8px;height:8px;border-radius:50%;background:#64d6a0;box-shadow:0 0 0 5px rgba(100,214,160,.12)}.hero-grid{position:relative;z-index:2;display:grid;grid-template-columns:1.1fr .9fr;gap:55px;align-items:center;padding:90px 0 35px}.eyebrow{font-size:.75rem;letter-spacing:2.5px;font-weight:800;color:var(--gold);margin:0 0 14px}.hero h1{font-family:Georgia,"Times New Roman",serif;font-size:clamp(3.8rem,8vw,7.8rem);line-height:.88;letter-spacing:-3px;margin:0}.hero h1 em{font-weight:400;color:#f0cf8a}.lead{font-size:clamp(1.04rem,1.7vw,1.25rem);line-height:1.75;color:#d7e2dd;max-width:720px;margin:25px 0}.motto{font-weight:900;letter-spacing:.08em;color:white}.live-box{border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.055);backdrop-filter:blur(12px);border-radius:30px;padding:30px;box-shadow:0 30px 80px rgba(0,0,0,.25)}.live-box small{color:#9fb6ac;letter-spacing:1.6px}.live-box h2{font-family:Georgia,serif;font-size:2rem;margin:8px 0 8px}.live-box p{color:#cbd9d3;line-height:1.6}.refresh{border:0;border-radius:999px;padding:12px 18px;font-weight:800;background:var(--gold);color:#14231e;cursor:pointer}.refresh:active{transform:scale(.98)}.meta{margin-top:14px;font-size:.78rem;color:#93aaa0}.section{padding:84px 0}.topline{display:flex;justify-content:space-between;gap:25px;align-items:end;margin-bottom:28px}.topline h2{font-family:Georgia,serif;font-size:clamp(2.3rem,5vw,4.6rem);line-height:1;margin:0}.topline p{max-width:480px;color:#65716b;line-height:1.7}.money-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}.money-card{background:#fffaf0;border:1px solid #e3d8c4;border-radius:28px;padding:22px;box-shadow:0 20px 50px rgba(72,50,12,.08);transition:.25s transform,.25s box-shadow}.money-card:hover{transform:translateY(-6px);box-shadow:0 28px 65px rgba(72,50,12,.15)}.country-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.country{display:flex;gap:10px;align-items:center;font-weight:900}.flag{font-size:1.8rem}.rank{font-size:.72rem;letter-spacing:2px;color:#978b75}.banknote{position:relative;overflow:hidden;min-height:190px;border-radius:22px;padding:22px;background:linear-gradient(135deg,var(--c1),var(--c2));color:white;display:flex;flex-direction:column;justify-content:space-between;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)}.banknote:before,.banknote:after{content:"";position:absolute;border:1px solid rgba(255,255,255,.18);border-radius:50%}.banknote:before{width:170px;height:170px;right:-35px;top:-55px}.banknote:after{width:95px;height:95px;left:-20px;bottom:-30px}.bill-top,.bill-bottom{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:start}.denom{font:700 clamp(2.7rem,6vw,5.5rem) Georgia,serif;line-height:.85}.code{font-weight:900;letter-spacing:2px;font-size:.8rem}.bill-name{font-size:.78rem;letter-spacing:1.4px;text-transform:uppercase;opacity:.83}.watermark{position:absolute;inset:0;display:grid;place-items:center;font:700 4.2rem Georgia,serif;opacity:.07;transform:rotate(-11deg)}.equiv{display:flex;justify-content:space-between;gap:15px;align-items:end;padding-top:18px}.equiv small{display:block;color:#7b756a;margin-bottom:4px}.usd{font-size:1.55rem;font-weight:900}.rate{font-size:.76rem;color:#827969;text-align:right}.loading{padding:40px;border:1px dashed #cdbb9c;border-radius:24px;text-align:center;color:#756d61}.footnote{margin-top:30px;padding-top:20px;border-top:1px solid #d8ccb8;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font-size:.77rem;color:#7b7468}.footnote a{color:inherit}.closing{background:#071d18;color:white;text-align:center;padding:80px 0}.closing h2{font-family:Georgia,serif;font-size:clamp(2.8rem,7vw,6.5rem);margin:0 0 18px;line-height:.95}.closing p{color:#afc3b9}.error{color:#8d3329}.spin{display:inline-block;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:820px){.hero-grid,.money-grid{grid-template-columns:1fr}.hero-grid{padding-top:55px}.topline{align-items:start;flex-direction:column}.live-box{max-width:600px}.hero h1{letter-spacing:-2px}}@media(max-width:520px){.nav{align-items:flex-start}.status{max-width:160px;text-align:right}.hero{padding-bottom:46px}.section{padding:62px 0}.banknote{min-height:165px}.money-card{padding:15px;border-radius:22px}.denom{font-size:3.5rem}}
+</style>
 </head>
 <body>
-  <header class="hero" id="inicio">
-    <div class="hero-glow hero-glow-one"></div>
-    <div class="hero-glow hero-glow-two"></div>
-
-    <nav class="nav container">
-      <a class="brand" href="#inicio" aria-label="AmericaEsTuya, inicio">
-        <span class="brand-mark">A</span>
-        <span>America<strong>EsTuya</strong></span>
-      </a>
-      <div class="nav-links">
-        <a href="#nosotros">Quiénes somos</a>
-        <a href="#personalidades">Rostros</a>
-        <a href="#historia">Historia</a>
-        <a href="#manifiesto">Nuestra idea</a>
-      </div>
-      <a class="nav-pill" href="#nosotros">Entrar al viaje</a>
+<header class="hero">
+  <div class="wrap">
+    <nav class="nav">
+      <div class="brand"><span class="logo">A</span><span>America<b>EsTuya</b></span></div>
+      <div class="status"><span class="dot"></span><span id="statusText">Conectando con tasas de cambio…</span></div>
     </nav>
 
-    <div class="hero-content container">
-      <div class="hero-copy reveal">
-        <p class="eyebrow">DE ALASKA A TIERRA DEL FUEGO</p>
-        <h1>América es<br><span>nuestra.</span></h1>
-        <p class="lead">
-          Es de quienes la viven, la recuerdan, la construyen y la sueñan.
-          De quienes encuentran en ella raíces, identidad, cultura y futuro.
-        </p>
-        <div class="hero-actions">
-          <a class="button primary" href="#nosotros">Descubre por qué es tuya</a>
-          <a class="button ghost" href="#personalidades">Conoce sus rostros ↓</a>
-        </div>
+    <div class="hero-grid">
+      <div>
+        <p class="eyebrow">UN CONTINENTE · MUCHOS BILLETES · UN VALOR COMPARABLE</p>
+        <h1>El valor de<br><em>América.</em></h1>
+        <p class="lead">Un paseo visual por el dinero de nuestro continente. Cada billete muestra cuánto representa hoy frente al dólar estadounidense.</p>
+        <p class="motto">AMÉRICA ES NUESTRA · AMÉRICA ES TUYA</p>
       </div>
 
-      <div class="hero-orbit reveal" aria-hidden="true">
-        <div class="orbit-ring ring-one"></div>
-        <div class="orbit-ring ring-two"></div>
-        <div class="continent-core">
-          <span class="america-word">AMÉRICA</span>
-          <span class="america-sub">también eres tú</span>
-        </div>
-        <span class="orbit-dot dot-1">●</span>
-        <span class="orbit-dot dot-2">●</span>
-        <span class="orbit-dot dot-3">●</span>
+      <div class="live-box">
+        <small>DATOS EN LÍNEA</small>
+        <h2>Las tasas cambian. La página también.</h2>
+        <p>Los valores se actualizan automáticamente y los billetes se ordenan de mayor a menor según su equivalente en USD.</p>
+        <button class="refresh" id="refreshBtn">↻ Actualizar ahora</button>
+        <div class="meta" id="lastUpdate">Esperando datos…</div>
       </div>
     </div>
+  </div>
+</header>
 
-    <div class="hero-footer container">
-      <span>35 países · incontables maneras de pertenecer</span>
-      <span class="scroll-cue">DESLIZA · EL VIAJE COMIENZA AQUÍ</span>
+<main class="section">
+  <div class="wrap">
+    <div class="topline">
+      <div><p class="eyebrow">BILLETES DE AMÉRICA</p><h2>¿Cuánto vale este billete?</h2></div>
+      <p>Una primera selección. El orden no está escrito a mano: cambia con el valor calculado al cargar las tasas.</p>
     </div>
-  </header>
+    <div id="moneyGrid" class="money-grid"><div class="loading"><span class="spin">◌</span> Cargando valores actuales…</div></div>
+    <div class="footnote">
+      <span>Los diseños son ilustraciones visuales, no reproducciones oficiales de los billetes.</span>
+      <span>Fuente de tasas: <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener">ExchangeRate-API</a></span>
+    </div>
+  </div>
+</main>
 
-  <main>
-    <section id="nosotros" class="ownership-section">
-      <div class="container ownership-wrap reveal">
-        <div class="ownership-kicker">NUESTRO PUNTO DE PARTIDA</div>
-        <p class="ownership-line ownership-main">América es de su gente.</p>
-        <p class="ownership-line">De su historia.</p>
-        <p class="ownership-line">De sus raíces.</p>
-        <p class="ownership-line">De todo lo que nos identifica.</p>
-        <div class="ownership-end">
-          <p>De quien nació aquí. De quien llegó. De quien se fue y todavía la lleva consigo. De quien habla español, inglés, portugués, francés, creole o una lengua originaria. De quien baila, trabaja, canta, recuerda, inventa, cocina, estudia y sueña.</p>
-          <strong>América es nuestra. América es tuya.</strong>
-        </div>
-      </div>
-      <div class="identity-river" aria-label="Todo lo que nos identifica">
-        <span>RAÍCES</span><span>MÚSICA</span><span>BARRIO</span><span>CIENCIA</span><span>FAMILIA</span><span>DEPORTE</span><span>MEMORIA</span><span>SABORES</span><span>PUEBLOS</span><span>SUEÑOS</span><span>ARTE</span><span>HISTORIA</span>
-      </div>
-    </section>
+<section class="closing">
+  <div class="wrap">
+    <p>Hoy comenzamos por el dinero. Mañana el viaje puede llevarnos a cualquier rincón del continente.</p>
+    <h2>América es nuestra.<br>América es tuya.</h2>
+  </div>
+</section>
 
-    <section class="intro-strip">
-      <div class="container intro-grid reveal">
-        <p class="big-quote">“Cada país tiene rostros que viven para siempre en su gente.”</p>
-        <p>
-          No importa si vinieron de la política, la música, el deporte, la literatura,
-          la ciencia o la vida popular. Cada personalidad será una puerta para conocer
-          mejor la historia, la cultura y la memoria de su país.
-        </p>
-      </div>
-    </section>
+<script>
+const bills=[
+ {country:'Estados Unidos',flag:'🇺🇸',code:'USD',amount:100,name:'Dólar estadounidense',c1:'#254638',c2:'#6d8b70'},
+ {country:'Canadá',flag:'🇨🇦',code:'CAD',amount:100,name:'Dólar canadiense',c1:'#8d2d37',c2:'#cc6771'},
+ {country:'Bahamas',flag:'🇧🇸',code:'BSD',amount:100,name:'Dólar bahameño',c1:'#177e82',c2:'#44b7a9'},
+ {country:'Barbados',flag:'🇧🇧',code:'BBD',amount:100,name:'Dólar barbadense',c1:'#725122',c2:'#c3933e'},
+ {country:'Belice',flag:'🇧🇿',code:'BZD',amount:100,name:'Dólar beliceño',c1:'#315a8f',c2:'#6e8db7'},
+ {country:'México',flag:'🇲🇽',code:'MXN',amount:1000,name:'Peso mexicano',c1:'#5b326e',c2:'#9f6eb2'},
+ {country:'Brasil',flag:'🇧🇷',code:'BRL',amount:200,name:'Real brasileño',c1:'#8a762a',c2:'#b8a943'},
+ {country:'Uruguay',flag:'🇺🇾',code:'UYU',amount:2000,name:'Peso uruguayo',c1:'#285d83',c2:'#61a4c8'},
+ {country:'República Dominicana',flag:'🇩🇴',code:'DOP',amount:2000,name:'Peso dominicano',c1:'#3a4d91',c2:'#7b79bc'},
+ {country:'Colombia',flag:'🇨🇴',code:'COP',amount:1000,name:'Peso colombiano',c1:'#9b5b1f',c2:'#d5a34d'}
+];
 
-    <section id="personalidades" class="section personalities-section">
-      <div class="container">
-        <div class="section-heading reveal">
-          <div>
-            <p class="eyebrow">LOS ROSTROS QUE NO SE OLVIDAN</p>
-            <h2>Personas que se volvieron parte de la memoria de un país.</h2>
-          </div>
-          <p>
-            Esta es nuestra primera selección. La iremos ampliando y revisando
-            hasta representar cada nación de América con respeto, contexto y emoción.
-          </p>
-        </div>
+const grid=document.getElementById('moneyGrid');
+const statusText=document.getElementById('statusText');
+const lastUpdate=document.getElementById('lastUpdate');
+const refreshBtn=document.getElementById('refreshBtn');
 
-        <div class="cards">
-          <article class="card reveal" data-country="Cuba"><div class="card-top"><span class="flag">🇨🇺</span><span class="number">01</span></div><div class="card-body"><p class="country">CUBA</p><h3>José Martí</h3><p>Poeta, pensador y símbolo nacional cuya obra sigue presente en la identidad cubana.</p></div><div class="card-foot"><span>Literatura · Historia</span><span>→</span></div></article>
-          <article class="card reveal" data-country="Colombia"><div class="card-top"><span class="flag">🇨🇴</span><span class="number">02</span></div><div class="card-body"><p class="country">COLOMBIA</p><h3>Gabriel García Márquez</h3><p>El escritor que convirtió historias del Caribe colombiano en literatura universal.</p></div><div class="card-foot"><span>Literatura · Cultura</span><span>→</span></div></article>
-          <article class="card reveal" data-country="Brasil"><div class="card-top"><span class="flag">🇧🇷</span><span class="number">03</span></div><div class="card-body"><p class="country">BRASIL</p><h3>Pelé</h3><p>Un nombre que atravesó fronteras y convirtió el fútbol brasileño en leyenda mundial.</p></div><div class="card-foot"><span>Deporte · Cultura popular</span><span>→</span></div></article>
-          <article class="card reveal" data-country="Argentina"><div class="card-top"><span class="flag">🇦🇷</span><span class="number">04</span></div><div class="card-body"><p class="country">ARGENTINA</p><h3>Lionel Messi</h3><p>Talento, perseverancia y una historia deportiva que millones de argentinos sienten propia.</p></div><div class="card-foot"><span>Deporte · Identidad</span><span>→</span></div></article>
-          <article class="card reveal" data-country="México"><div class="card-top"><span class="flag">🇲🇽</span><span class="number">05</span></div><div class="card-body"><p class="country">MÉXICO</p><h3>Pedro Infante</h3><p>Actor y cantante cuya voz, películas y carisma permanecen en la memoria popular mexicana.</p></div><div class="card-foot"><span>Cine · Música</span><span>→</span></div></article>
-          <article class="card reveal" data-country="Estados Unidos"><div class="card-top"><span class="flag">🇺🇸</span><span class="number">06</span></div><div class="card-body"><p class="country">ESTADOS UNIDOS</p><h3>Abraham Lincoln</h3><p>Una de las figuras presidenciales más reconocidas y perdurables de la historia del país.</p></div><div class="card-foot"><span>Política · Historia</span><span>→</span></div></article>
-        </div>
+function moneyUSD(v){
+ return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:v<1?2:2,maximumFractionDigits:v<1?4:2}).format(v);
+}
+function number(v){return new Intl.NumberFormat('es-ES').format(v)}
 
-        <div class="coming reveal"><span class="pulse"></span><strong>El viaje apenas abre sus puertas:</strong> iremos sumando los 35 países de América.</div>
-      </div>
-    </section>
+function render(rates){
+ const rows=bills.map(b=>({...b,usd:b.code==='USD'?b.amount:b.amount/rates[b.code],perUnit:b.code==='USD'?1:1/rates[b.code]})).filter(b=>Number.isFinite(b.usd)).sort((a,b)=>b.usd-a.usd);
+ grid.innerHTML=rows.map((b,i)=>`
+ <article class="money-card">
+   <div class="country-row"><div class="country"><span class="flag">${b.flag}</span>${b.country}</div><span class="rank">#${String(i+1).padStart(2,'0')}</span></div>
+   <div class="banknote" style="--c1:${b.c1};--c2:${b.c2}">
+     <div class="watermark">${b.code}</div>
+     <div class="bill-top"><span class="code">${b.code}</span><span class="bill-name">${b.name}</span></div>
+     <div class="bill-bottom"><span class="denom">${number(b.amount)}</span><span class="code">${b.flag}</span></div>
+   </div>
+   <div class="equiv"><div><small>Equivalente aproximado</small><div class="usd">${moneyUSD(b.usd)}</div></div><div class="rate">1 ${b.code}<br>≈ ${moneyUSD(b.perUnit)}</div></div>
+ </article>`).join('');
+}
 
-    <section id="historia" class="history-section"><div class="container history-wrap"><div class="history-intro reveal"><p class="eyebrow">ANTES DE LAS BANDERAS</p><h2>Para entender América, hay que viajar mucho más atrás.</h2><p>Nuestra historia no comenzará en 1492 ni con las independencias. Empezará con la tierra misma: océanos, placas tectónicas, migraciones, pueblos y civilizaciones que existieron mucho antes de las fronteras actuales.</p></div><div class="timeline"><article class="timeline-item reveal"><span>01</span><div><small>HACE MILLONES DE AÑOS</small><h3>Se forma el continente</h3><p>La geología escribe el primer capítulo.</p></div></article><article class="timeline-item reveal"><span>02</span><div><small>PRIMEROS POBLADORES</small><h3>Comienza la historia humana</h3><p>Migraciones, adaptación y nuevas culturas.</p></div></article><article class="timeline-item reveal"><span>03</span><div><small>GRANDES CIVILIZACIONES</small><h3>Ciudades, conocimiento y poder</h3><p>Mayas, mexicas, incas y muchos otros pueblos.</p></div></article><article class="timeline-item reveal"><span>04</span><div><small>DESDE 1492</small><h3>Dos mundos se encuentran</h3><p>Conquista, intercambio, resistencia y transformación.</p></div></article><article class="timeline-item reveal"><span>05</span><div><small>SIGLOS XVIII–XIX</small><h3>Nacen nuevas naciones</h3><p>Revoluciones e independencias cambian el mapa.</p></div></article><article class="timeline-item reveal"><span>06</span><div><small>HOY</small><h3>Una América que sigue cambiando</h3><p>35 países y más de mil millones de historias humanas.</p></div></article></div></div></section>
-
-    <section id="manifiesto" class="manifesto-section"><div class="container manifesto reveal"><p class="eyebrow">NUESTRA PROMESA</p><h2>No queremos hacer otra enciclopedia.</h2><p class="manifesto-main">Queremos que alguien entre por curiosidad y termine encontrándose a sí mismo en algún rincón del continente.</p><div class="manifesto-grid"><div><span>01</span><h3>Historia viva</h3><p>Contada de forma visual, clara, humana y emocionante.</p></div><div><span>02</span><h3>Todo lo que somos</h3><p>Personas, música, comida, ciudades, paisajes, palabras, costumbres y memoria.</p></div><div><span>03</span><h3>La gente tendrá voz</h3><p>Más adelante podrá proponer, recordar, votar, corregir y contar sus propias historias.</p></div></div></div></section>
-
-    <section class="final-call"><div class="container reveal"><p>No importa dónde estés ahora.</p><h2>Hay una América<br>que también vive en ti.</h2><strong class="final-motto">AMÉRICA ES NUESTRA · AMÉRICA ES TUYA</strong><div><a class="button primary" href="#inicio">Volver al comienzo ↑</a></div></div></section>
-  </main>
-
-  <footer><div class="container footer-inner"><a class="brand footer-brand" href="#inicio"><span class="brand-mark">A</span><span>America<strong>EsTuya</strong></span></a><p>Hecho para descubrir, recordar y compartir todo lo que nos identifica.</p><span>Proyecto en construcción · 2026</span></div></footer>
-
-  <script src="script.js"></script>
+async function loadRates(force=false){
+ refreshBtn.disabled=true;statusText.textContent='Actualizando…';lastUpdate.textContent='Consultando tasas…';
+ try{
+   const cache=JSON.parse(localStorage.getItem('aet_rates')||'null');
+   const age=cache?Date.now()-cache.savedAt:Infinity;
+   let data;
+   if(!force && cache && age<60*60*1000){data=cache.data}else{
+     const res=await fetch('https://open.er-api.com/v6/latest/USD',{cache:'no-store'});
+     if(!res.ok) throw new Error('No se pudo obtener la tasa');
+     data=await res.json();
+     if(data.result!=='success') throw new Error('Respuesta inválida');
+     localStorage.setItem('aet_rates',JSON.stringify({savedAt:Date.now(),data}));
+   }
+   render(data.rates);
+   statusText.textContent='Tasas en línea disponibles';
+   const d=new Date(data.time_last_update_utc);
+   lastUpdate.textContent='Última actualización de la fuente: '+d.toLocaleString('es-US',{dateStyle:'medium',timeStyle:'short'});
+ }catch(e){
+   const cache=JSON.parse(localStorage.getItem('aet_rates')||'null');
+   if(cache){render(cache.data.rates);statusText.textContent='Mostrando última copia disponible';lastUpdate.textContent='Sin conexión con la fuente ahora mismo.'}
+   else{grid.innerHTML='<div class="loading error">No pudimos cargar las tasas en este momento. Pulsa “Actualizar ahora” cuando tengas conexión.</div>';statusText.textContent='Sin conexión';lastUpdate.textContent='No hay datos disponibles.'}
+ }finally{refreshBtn.disabled=false}
+}
+refreshBtn.addEventListener('click',()=>loadRates(true));
+loadRates();
+</script>
 </body>
 </html>
