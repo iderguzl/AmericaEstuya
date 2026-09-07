@@ -12,8 +12,6 @@ const FIREBASE_CONFIG = {
   measurementId: "G-8K579LVLX1"
 };
 
-const AUTH_READY = true;
-
 async function initAmericaAuth() {
   const gate = document.getElementById('authGate');
   const app = document.getElementById('siteApp');
@@ -42,17 +40,23 @@ async function initAmericaAuth() {
 
   const showError = (err) => {
     console.error(err);
-    const code = err?.code || '';
+    const code = err?.code || 'sin-codigo';
     if (code === 'auth/account-exists-with-different-credential') {
-      status.textContent = 'Ese correo ya está registrado con otro método de acceso.';
+      status.textContent = 'Ese correo ya está registrado con otro método de acceso. (' + code + ')';
     } else if (code === 'auth/operation-not-allowed') {
-      status.textContent = 'Ese método de acceso todavía no está habilitado en Firebase.';
+      status.textContent = 'Falta habilitar este proveedor en Firebase. (' + code + ')';
     } else if (code === 'auth/unauthorized-domain') {
-      status.textContent = 'Este dominio todavía no está autorizado en Firebase Authentication.';
+      status.textContent = 'Falta autorizar iderguzl.github.io en Firebase. (' + code + ')';
+    } else if (code === 'auth/configuration-not-found') {
+      status.textContent = 'Firebase Authentication todavía no está configurado. (' + code + ')';
+    } else if (code === 'auth/popup-blocked') {
+      status.textContent = 'El navegador bloqueó la ventana de acceso. (' + code + ')';
     } else if (code === 'auth/popup-closed-by-user') {
-      status.textContent = 'Se cerró la ventana de acceso antes de terminar.';
+      status.textContent = 'Se cerró la ventana de acceso antes de terminar. (' + code + ')';
+    } else if (code === 'auth/network-request-failed') {
+      status.textContent = 'Falló la conexión con Firebase. (' + code + ')';
     } else {
-      status.textContent = 'No se pudo iniciar sesión. Inténtalo nuevamente.';
+      status.textContent = 'Error de acceso: ' + code;
     }
   };
 
