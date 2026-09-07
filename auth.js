@@ -1,18 +1,18 @@
 // AmericaEsTuya authentication
-// Fill FIREBASE_CONFIG with the values from your Firebase web app.
-// The apiKey and other Firebase web config values are public identifiers;
-// never place a Facebook App Secret in this file.
+// Firebase web configuration is safe to expose in client-side code.
+// Never place a Facebook App Secret or any private server secret here.
 
 const FIREBASE_CONFIG = {
-  apiKey: "REPLACE_ME",
-  authDomain: "REPLACE_ME.firebaseapp.com",
-  projectId: "REPLACE_ME",
-  storageBucket: "REPLACE_ME.firebasestorage.app",
-  messagingSenderId: "REPLACE_ME",
-  appId: "REPLACE_ME"
+  apiKey: "AIzaSyCanpMR3uSiZAecwLYG9nWiXvaksJncX0U",
+  authDomain: "americaestuya.firebaseapp.com",
+  projectId: "americaestuya",
+  storageBucket: "americaestuya.firebasestorage.app",
+  messagingSenderId: "1071710933035",
+  appId: "1:1071710933035:web:2443a0ec9f1405fcc61a6e",
+  measurementId: "G-8K579LVLX1"
 };
 
-const AUTH_READY = !Object.values(FIREBASE_CONFIG).some(v => String(v).includes('REPLACE_ME'));
+const AUTH_READY = true;
 
 async function initAmericaAuth() {
   const gate = document.getElementById('authGate');
@@ -26,15 +26,6 @@ async function initAmericaAuth() {
   const userName = document.getElementById('userName');
 
   if (!gate || !app) return;
-
-  if (!AUTH_READY) {
-    gate.style.display = 'grid';
-    app.style.display = 'none';
-    status.textContent = 'Falta conectar Firebase para activar Google y Facebook.';
-    googleBtn.disabled = true;
-    facebookBtn.disabled = true;
-    return;
-  }
 
   const [{ initializeApp }, {
     getAuth, onAuthStateChanged, signInWithPopup, signOut,
@@ -51,10 +42,22 @@ async function initAmericaAuth() {
 
   const showError = (err) => {
     console.error(err);
-    status.textContent = err?.code === 'auth/account-exists-with-different-credential'
-      ? 'Ese correo ya está registrado con otro método de acceso.'
-      : 'No se pudo iniciar sesión. Inténtalo nuevamente.';
+    const code = err?.code || '';
+    if (code === 'auth/account-exists-with-different-credential') {
+      status.textContent = 'Ese correo ya está registrado con otro método de acceso.';
+    } else if (code === 'auth/operation-not-allowed') {
+      status.textContent = 'Ese método de acceso todavía no está habilitado en Firebase.';
+    } else if (code === 'auth/unauthorized-domain') {
+      status.textContent = 'Este dominio todavía no está autorizado en Firebase Authentication.';
+    } else if (code === 'auth/popup-closed-by-user') {
+      status.textContent = 'Se cerró la ventana de acceso antes de terminar.';
+    } else {
+      status.textContent = 'No se pudo iniciar sesión. Inténtalo nuevamente.';
+    }
   };
+
+  googleBtn.disabled = false;
+  facebookBtn.disabled = false;
 
   googleBtn.onclick = async () => {
     status.textContent = 'Abriendo Google…';
