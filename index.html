@@ -1,19 +1,22 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#071d18">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#071d18">
 <title>AmericaEsTuya — El valor de América</title>
 <style>
 :root{--g:#071d18;--g2:#0d372b;--c:#f5eddd;--card:#fffaf1;--gold:#efc56b;--ink:#10241d}*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--c);color:var(--ink)}.wrap{width:min(1120px,92%);margin:auto}.hero{background:linear-gradient(145deg,#061713,var(--g2));color:#fff;padding:24px 0 54px}.nav{display:flex;justify-content:space-between;align-items:center}.brand{font-weight:900;font-size:1.18rem}.brand b{color:var(--gold)}.status{font-size:.78rem;color:#b9cec5}.heroGrid{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:end;padding-top:54px}.eyebrow{font-size:.74rem;letter-spacing:2.3px;font-weight:900;color:var(--gold)}h1,h2{font-family:Georgia,"Times New Roman",serif}.hero h1{font-size:clamp(3.8rem,9vw,7.4rem);line-height:.9;margin:8px 0 20px}.hero h1 em{font-weight:400;color:#f3d28f}.lead{font-size:1.08rem;line-height:1.7;color:#d5e2dc}.motto{font-weight:900;letter-spacing:.08em}.panel{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:26px;padding:24px}.panel h2{font-size:2rem;margin:7px 0}.panel p{color:#cedbd5;line-height:1.6}.search{width:100%;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.09);color:#fff;border-radius:999px;padding:13px 17px;font:inherit}.search::placeholder{color:#b9c9c2}.section{padding:58px 0}.topline{display:flex;justify-content:space-between;gap:28px;align-items:end;margin-bottom:28px}.topline h2{font-size:clamp(2.5rem,5vw,4.6rem);margin:0;line-height:1}.topline p{max-width:520px;color:#6f746f;line-height:1.6}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.countryCard{background:var(--card);border:1px solid #e2d7c3;border-radius:26px;padding:18px;box-shadow:0 18px 45px rgba(72,50,12,.08)}.countryTop{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.countryTop b{font-size:1.12rem}.countryTop small{color:#958b77}.moneyRow{display:grid;grid-template-columns:1.15fr .85fr;gap:14px}.billBox{min-height:168px;border-radius:20px;overflow:hidden;background:#e9e0cf;display:flex;align-items:center;justify-content:center}.billBox img{width:100%;height:168px;object-fit:contain;background:#eee7da}.valueBox{background:#efe6d3;border-radius:20px;padding:18px;display:flex;flex-direction:column;justify-content:center}.valueBox small{letter-spacing:1.7px;color:#8c8171;font-weight:900}.valueBox b{font-size:1.75rem;margin:8px 0}.valueBox span{color:#766f64;line-height:1.45;font-size:.9rem}.source{font-size:.7rem;color:#9b917f;margin-top:10px}.hidden{display:none!important}.closing{background:var(--g);color:#fff;text-align:center;padding:68px 0}.closing h2{font-size:clamp(2.8rem,7vw,6rem);line-height:.95;margin:0}.closing p{color:#aec2b8}@media(max-width:820px){.heroGrid,.grid{grid-template-columns:1fr}.topline{align-items:start;flex-direction:column}}@media(max-width:520px){.countryCard{padding:14px}.moneyRow{grid-template-columns:1.05fr .95fr;gap:10px}.billBox img{height:148px}.valueBox{padding:14px}.valueBox b{font-size:1.45rem}.hero h1{font-size:3.7rem}}
 </style>
 </head>
 <body>
-<header class="hero"><div class="wrap"><div class="nav"><div class="brand">America<b>EsTuya</b></div><div class="status" id="status">35 billetes · valores en línea</div></div><div class="heroGrid"><div><p class="eyebrow">EL DINERO TAMBIÉN CUENTA NUESTRA HISTORIA</p><h1>El valor de<br><em>América.</em></h1><p class="lead">Un billete real de cada país y su equivalente aproximado frente al dólar estadounidense.</p><p class="motto">AMÉRICA ES NUESTRA · AMÉRICA ES TUYA</p></div><div class="panel"><small>EXPLORA</small><h2>Busca un país.</h2><p>Las imágenes de los billetes están fijadas país por país; ya no se buscan automáticamente.</p><input class="search" id="search" placeholder="Buscar país…"></div></div></div></header>
+<header class="hero"><div class="wrap"><div class="nav"><div class="brand">America<b>EsTuya</b></div><div class="status" id="status">35 billetes · valores en línea</div></div><div class="heroGrid"><div><p class="eyebrow">EL DINERO TAMBIÉN CUENTA NUESTRA HISTORIA</p><h1>El valor de<br><em>América.</em></h1><p class="lead">Un billete real de cada país y su equivalente aproximado frente al dólar estadounidense.</p><p class="motto">AMÉRICA ES NUESTRA · AMÉRICA ES TUYA</p></div><div class="panel"><small>EXPLORA</small><h2>Busca un país.</h2><p>Las imágenes de los billetes están fijadas país por país.</p><input class="search" id="search" placeholder="Buscar país…"></div></div></div></header>
 <main class="section"><div class="wrap"><div class="topline"><div><p class="eyebrow" style="color:#a87523">BILLETES DE AMÉRICA</p><h2>País por país.</h2></div><p>Los valores internacionales se actualizan en línea. Cuba conserva una referencia separada.</p></div><div class="grid" id="grid"></div></div></main>
 <section class="closing"><div class="wrap"><p>El dinero cambia. La identidad permanece.</p><h2>América es nuestra.<br>América es tuya.</h2></div></section>
 <script>
 const usd1='https://commons.wikimedia.org/wiki/Special:Redirect/file/United%20States%20one%20dollar%20bill%2C%20obverse.jpg?width=900';
 const xcd100='assets/xcd-eccb-notes.jpg';
+const colombiaBills='assets/colombia-billetes.jpg';
 const countries=[
 ['🇧🇸','Bahamas','BSD','Dólar bahameño',100,100,'https://cdn.centralbankbahamas.com/caches/200x100/2021-09-28-04-54-36-CBB-CE-100-Face-SPECIMEN-300dpifront.jpg','Banco Central de Las Bahamas'],
 ['🇪🇨','Ecuador','USD','Dólar estadounidense',1,1,usd1,'USD 1'],['🇸🇻','El Salvador','USD','Dólar estadounidense',1,1,usd1,'USD 1'],['🇺🇸','Estados Unidos','USD','Dólar estadounidense',1,1,usd1,'USD 1'],['🇵🇦','Panamá','USD','Dólar estadounidense',1,1,usd1,'USD 1'],
@@ -40,7 +43,7 @@ const countries=[
 ['🇸🇷','Surinam','SRD','Dólar surinamés',500,13.18,'https://platform.keesingtechnologies.com/wp-content/uploads/2024/04/sur_500_f.jpg','500 SRD'],
 ['🇭🇹','Haití','HTG','Gourde',1000,7.65,'https://www.issoire-philatelie.com/104359-large_default/haiti-p278g-ttb-billet-de-1000-gourdes-2019-florvil-hyppolite.jpg','1.000 gourdes'],
 ['🇨🇺','Cuba','CUP','Peso cubano',1000,1.47,'https://content.easyliveauction.com/auctions/images_lots/3FEEB92078EA3745CBBE171AF1FAE9E6_mve01/1100019440_PREVIEW.JPG','1.000 CUP'],
-['🇨🇴','Colombia','COP','Peso colombiano',1000,.3172,'https://www.arthurmaury.fr/57388-medium_default/p450-colombie-billet-de-1000-pesos.jpg','1.000 COP'],
+['🇨🇴','Colombia','COP','Peso colombiano',1000,.3172,colombiaBills,'Billetes de Colombia'],
 ['🇻🇪','Venezuela','VES','Bolívar',100,.1229,'https://www.greatamericancoincompany.com/cdn/shop/files/VENZ.100.DIGI.CIRC.OBV-REV.jpg?v=1714738268&width=1000','100 bolívares']
 ];
 let rates={};const grid=document.getElementById('grid'),nf=new Intl.NumberFormat('es',{maximumFractionDigits:4});
@@ -49,4 +52,6 @@ function rate(c){if(c[1]==='Cuba')return 'Referencia separada';const r=c[2]==='U
 function render(){const s=[...countries].sort((a,b)=>val(b)-val(a));grid.innerHTML=s.map((c,i)=>`<article class="countryCard" data-name="${c[1].toLowerCase()}"><div class="countryTop"><b>${c[0]} ${c[1]}</b><small>#${String(i+1).padStart(2,'0')}</small></div><div class="moneyRow"><div class="billBox"><img src="${c[6]}" alt="Billete de ${c[1]}" onerror="this.style.opacity=.15"></div><div class="valueBox"><small>EQUIVALE A</small><b>$${val(c).toFixed(val(c)<1?4:2)} USD</b><span>${rate(c)}</span></div></div><div class="source">${c[7]}</div></article>`).join('')}
 render();fetch('https://open.er-api.com/v6/latest/USD').then(r=>r.json()).then(d=>{if(d?.rates){rates=d.rates;document.getElementById('status').textContent='35 billetes · valores actualizados en línea';render()}}).catch(()=>{});
 document.getElementById('search').addEventListener('input',e=>{const q=e.target.value.toLowerCase().trim();document.querySelectorAll('.countryCard').forEach(c=>c.classList.toggle('hidden',q&&!c.dataset.name.includes(q)))})
-</script></body></html>
+</script>
+</body>
+</html>
