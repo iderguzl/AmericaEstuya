@@ -12,21 +12,10 @@ const FIREBASE_CONFIG = {
   measurementId: "G-8K579LVLX1"
 };
 
-const FB_REDIRECT_KEY = 'americaestuya_fb_redirect_pending';
-const FB_RELOAD_KEY = 'americaestuya_fb_return_reloaded';
-
-// Algunos Chrome móviles restauran la página anterior desde BFCache al volver
-// de Facebook. En ese caso el JavaScript no se reinicia y queda visible
-// "Abriendo Facebook…". Forzamos UNA recarga limpia para que Firebase pueda
-// leer el resultado del redirect.
-window.addEventListener('pageshow', (event) => {
-  if (event.persisted && sessionStorage.getItem(FB_REDIRECT_KEY) === '1') {
-    if (sessionStorage.getItem(FB_RELOAD_KEY) !== '1') {
-      sessionStorage.setItem(FB_RELOAD_KEY, '1');
-      window.location.reload();
-    }
-  }
-});
+// Facebook App ID is public. Never put the App Secret in this file.
+const FACEBOOK_APP_ID = "1605723354284010";
+const FACEBOOK_RETURN_URL = "https://iderguzl.github.io/AmericaEstuya/";
+const FB_STATE_KEY = "americaestuya_fb_oauth_state";
 
 async function initAmericaAuth() {
   const gate = document.getElementById('authGate');
@@ -41,8 +30,7 @@ async function initAmericaAuth() {
   if (!gate || !app) return;
 
   const [{ initializeApp }, {
-    getAuth, onAuthStateChanged, signInWithPopup,
-    signInWithRedirect, getRedirectResult,
+    getAuth, onAuthStateChanged, signInWithPopup, signInWithCredential,
     setPersistence, browserLocalPersistence,
     signOut, GoogleAuthProvider, FacebookAuthProvider
   }] = await Promise.all([
@@ -57,11 +45,7 @@ async function initAmericaAuth() {
   const googleProvider = new GoogleAuthProvider();
   googleProvider.setCustomParameters({ prompt: 'select_account' });
 
-  const facebookProvider = new FacebookAuthProvider();
-  facebookProvider.addScope('email');
-
   let loginInProgress = false;
-  const returningFromFacebook = sessionStorage.getItem(FB_REDIRECT_KEY) === '1';
 
   const setButtons = disabled => {
     if (googleBtn) googleBtn.disabled = disabled;
@@ -70,8 +54,6 @@ async function initAmericaAuth() {
 
   const showMainSite = user => {
     loginInProgress = false;
-    sessionStorage.removeItem(FB_REDIRECT_KEY);
-    sessionStorage.removeItem(FB_RELOAD_KEY);
     setButtons(false);
     gate.style.display = 'none';
     app.style.display = 'block';
@@ -91,8 +73,6 @@ async function initAmericaAuth() {
     const code = err?.code || 'sin-codigo';
     const message = err?.message || '';
     loginInProgress = false;
-    sessionStorage.removeItem(FB_REDIRECT_KEY);
-    sessionStorage.removeItem(FB_RELOAD_KEY);
     setButtons(false);
 
     if (code === 'auth/account-exists-with-different-credential') {
@@ -101,8 +81,6 @@ async function initAmericaAuth() {
       status.textContent = 'Facebook no está habilitado correctamente en Firebase. (' + code + ')';
     } else if (code === 'auth/unauthorized-domain') {
       status.textContent = 'Falta autorizar iderguzl.github.io en Firebase. (' + code + ')';
-    } else if (code === 'auth/configuration-not-found') {
-      status.textContent = 'Firebase Authentication todavía no está configurado. (' + code + ')';
     } else if (code === 'auth/network-request-failed') {
       status.textContent = 'Falló la conexión con Firebase. (' + code + ')';
     } else {
@@ -110,22 +88,44 @@ async function initAmericaAuth() {
     }
   };
 
-  // Al regresar de Facebook procesamos el resultado ANTES de dejar al usuario
-  // otra vez en la pantalla de acceso.
-  if (returningFromFacebook) {
+  // Facebook vuelve a ESTA MISMA página con el access token en el fragmento.
+  // Lo convertimos directamente en una credencial Firebase, evitando el
+  // almacenamiento cross-site del helper /__/auth/handler.
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const fbAccessToken = hashParams.get('access_token');
+  const returnedState = hashParams.get('state');
+  const fbError = hashParams.get('error_description') || hashParams.get('error');
+
+  if (fbError) {
+    history.replaceState({}, document.title, FACEBOOK_RETURN_URL);
+    status.textContent = 'Facebook no completó el acceso: ' + fbError;
+  } else if (fbAccessToken) {
     loginInProgress = true;
     setButtons(true);
     status.textContent = 'Completando acceso con Facebook…';
-  }
 
-  try {
-    const redirectResult = await getRedirectResult(auth);
-    if (redirectResult?.user) {
-      showMainSite(redirectResult.user);
-      return;
+    const expectedState = sessionStorage.getItem(FB_STATE_KEY);
+    sessionStorage.removeItem(FB_STATE_KEY);
+
+    if (!expectedState || returnedState !== expectedState) {
+      history.replaceState({}, document.title, FACEBOOK_RETURN_URL);
+      loginInProgress = false;
+      setButtons(false);
+      status.textContent = 'No se pudo validar el regreso de Facebook. Intenta nuevamente.';
+    } else {
+      try {
+        const credential = FacebookAuthProvider.credential(fbAccessToken);
+        const result = await signInWithCredential(auth, credential);
+        history.replaceState({}, document.title, FACEBOOK_RETURN_URL);
+        if (result?.user) {
+          showMainSite(result.user);
+          return;
+        }
+      } catch (e) {
+        history.replaceState({}, document.title, FACEBOOK_RETURN_URL);
+        showError(e);
+      }
     }
-  } catch (e) {
-    showError(e);
   }
 
   const loginGoogle = async () => {
@@ -146,20 +146,26 @@ async function initAmericaAuth() {
     }
   };
 
-  const loginFacebook = async () => {
+  const loginFacebook = () => {
     if (loginInProgress) return;
     loginInProgress = true;
     setButtons(true);
     status.textContent = 'Abriendo Facebook…';
-    sessionStorage.setItem(FB_REDIRECT_KEY, '1');
-    sessionStorage.removeItem(FB_RELOAD_KEY);
 
-    try {
-      // Misma pestaña: América es Tuya -> Facebook -> América es Tuya.
-      await signInWithRedirect(auth, facebookProvider);
-    } catch (e) {
-      showError(e);
-    }
+    const stateBytes = new Uint32Array(4);
+    crypto.getRandomValues(stateBytes);
+    const state = Array.from(stateBytes, n => n.toString(16).padStart(8, '0')).join('');
+    sessionStorage.setItem(FB_STATE_KEY, state);
+
+    const oauth = new URL('https://www.facebook.com/v23.0/dialog/oauth');
+    oauth.searchParams.set('client_id', FACEBOOK_APP_ID);
+    oauth.searchParams.set('redirect_uri', FACEBOOK_RETURN_URL);
+    oauth.searchParams.set('response_type', 'token');
+    oauth.searchParams.set('scope', 'email,public_profile');
+    oauth.searchParams.set('state', state);
+
+    // Todo en la misma pestaña: América es Tuya -> Facebook -> América es Tuya.
+    window.location.assign(oauth.toString());
   };
 
   if (googleBtn) googleBtn.onclick = loginGoogle;
@@ -169,27 +175,12 @@ async function initAmericaAuth() {
   onAuthStateChanged(auth, user => {
     if (user) {
       showMainSite(user);
-    } else {
+    } else if (!loginInProgress) {
       gate.style.display = 'grid';
       app.style.display = 'none';
       userBox.hidden = true;
-
-      // Si acabamos de volver de Facebook, damos un momento a Firebase para
-      // publicar el estado autenticado antes de reactivar los botones.
-      if (returningFromFacebook) {
-        setTimeout(() => {
-          if (auth.currentUser) {
-            showMainSite(auth.currentUser);
-            return;
-          }
-          loginInProgress = false;
-          setButtons(false);
-          sessionStorage.removeItem(FB_REDIRECT_KEY);
-          sessionStorage.removeItem(FB_RELOAD_KEY);
-          status.textContent = 'Facebook regresó, pero Firebase no recibió la sesión. Intenta nuevamente.';
-        }, 2500);
-      } else if (!loginInProgress) {
-        setButtons(false);
+      setButtons(false);
+      if (!status.textContent || status.textContent === 'Comprobando acceso…') {
         status.textContent = 'Inicia sesión para entrar a América es Tuya.';
       }
     }
@@ -198,8 +189,6 @@ async function initAmericaAuth() {
 
 initAmericaAuth().catch(e => {
   console.error('Error inicializando Firebase Auth', e);
-  sessionStorage.removeItem(FB_REDIRECT_KEY);
-  sessionStorage.removeItem(FB_RELOAD_KEY);
   const status = document.getElementById('authStatus');
   if (status) status.textContent = 'No se pudo iniciar Firebase Authentication: ' + (e?.message || e);
 });
