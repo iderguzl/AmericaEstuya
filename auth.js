@@ -26,8 +26,8 @@ async function initAmericaAuth() {
   if (!gate || !app) return;
 
   const [{ initializeApp }, {
-    getAuth, onAuthStateChanged, signInWithPopup, signInWithRedirect,
-    getRedirectResult, signOut, GoogleAuthProvider, FacebookAuthProvider
+    getAuth, onAuthStateChanged, signInWithPopup,
+    signOut, GoogleAuthProvider, FacebookAuthProvider
   }] = await Promise.all([
     import('https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js'),
     import('https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js')
@@ -35,9 +35,13 @@ async function initAmericaAuth() {
 
   const firebaseApp = initializeApp(FIREBASE_CONFIG);
   const auth = getAuth(firebaseApp);
+
   const googleProvider = new GoogleAuthProvider();
+  googleProvider.setCustomParameters({ prompt: 'select_account' });
+
   const facebookProvider = new FacebookAuthProvider();
   facebookProvider.addScope('email');
+  facebookProvider.setCustomParameters({ display: 'popup' });
 
   let loginInProgress = false;
 
@@ -47,24 +51,27 @@ async function initAmericaAuth() {
   };
 
   const showError = (err) => {
-    console.error(err);
+    console.error('AUTH ERROR', err);
     const code = err?.code || 'sin-codigo';
+
     if (code === 'auth/account-exists-with-different-credential') {
       status.textContent = 'Ese correo ya está registrado con otro método de acceso. (' + code + ')';
     } else if (code === 'auth/operation-not-allowed') {
-      status.textContent = 'Falta habilitar este proveedor en Firebase. (' + code + ')';
+      status.textContent = 'Facebook no está habilitado correctamente en Firebase. (' + code + ')';
     } else if (code === 'auth/unauthorized-domain') {
       status.textContent = 'Falta autorizar iderguzl.github.io en Firebase. (' + code + ')';
     } else if (code === 'auth/configuration-not-found') {
       status.textContent = 'Firebase Authentication todavía no está configurado. (' + code + ')';
     } else if (code === 'auth/popup-blocked') {
-      status.textContent = 'Chrome bloqueó la ventana de acceso. Permite ventanas emergentes para este sitio e inténtalo otra vez.';
+      status.textContent = 'Chrome bloqueó la ventana de acceso. Permite ventanas emergentes para este sitio y toca Facebook otra vez.';
     } else if (code === 'auth/popup-closed-by-user') {
-      status.textContent = 'La ventana de acceso se cerró antes de completar el inicio.';
+      status.textContent = 'La ventana de Facebook se cerró antes de terminar. Toca Facebook otra vez y no cierres la ventana.';
     } else if (code === 'auth/cancelled-popup-request') {
-      status.textContent = 'Había otro inicio de sesión pendiente. Espera un momento y toca el botón una sola vez.';
+      status.textContent = 'Ya había una ventana de acceso abierta. Ciérrala y toca el botón una sola vez.';
     } else if (code === 'auth/network-request-failed') {
       status.textContent = 'Falló la conexión con Firebase. Revisa Internet e inténtalo nuevamente.';
+    } else if (code === 'auth/internal-error') {
+      status.textContent = 'Facebook devolvió un error interno. Revisa la configuración de la app de Facebook. (' + code + ')';
     } else {
       status.textContent = 'Error de acceso: ' + code;
     }
@@ -75,6 +82,7 @@ async function initAmericaAuth() {
     loginInProgress = true;
     setButtons(true);
     status.textContent = 'Abriendo ' + name + '…';
+
     try {
       await signInWithPopup(auth, provider);
     } catch (e) {
@@ -85,31 +93,9 @@ async function initAmericaAuth() {
     }
   };
 
-  const loginFacebookWithRedirect = async () => {
-    if (loginInProgress) return;
-    loginInProgress = true;
-    setButtons(true);
-    status.textContent = 'Abriendo Facebook…';
-    try {
-      await signInWithRedirect(auth, facebookProvider);
-    } catch (e) {
-      loginInProgress = false;
-      setButtons(false);
-      showError(e);
-    }
-  };
-
   googleBtn.onclick = () => loginWithPopup(googleProvider, 'Google');
-  facebookBtn.onclick = () => loginFacebookWithRedirect();
+  facebookBtn.onclick = () => loginWithPopup(facebookProvider, 'Facebook');
   logoutBtn.onclick = () => signOut(auth);
-
-  try {
-    await getRedirectResult(auth);
-  } catch (e) {
-    loginInProgress = false;
-    setButtons(false);
-    showError(e);
-  }
 
   onAuthStateChanged(auth, (user) => {
     if (user) {
@@ -118,6 +104,7 @@ async function initAmericaAuth() {
       app.style.display = 'block';
       userBox.hidden = false;
       userName.textContent = user.displayName || user.email || 'Usuario';
+
       if (user.photoURL) {
         userPic.src = user.photoURL;
         userPic.hidden = false;
@@ -130,12 +117,14 @@ async function initAmericaAuth() {
       userBox.hidden = true;
       if (!loginInProgress) {
         setButtons(false);
-        if (!status.textContent.includes('Error') && !status.textContent.includes('cerró') && !status.textContent.includes('bloqueó')) {
-          status.textContent = 'Inicia sesión para entrar a América es Tuya.';
-        }
+        status.textContent = 'Inicia sesión para entrar a América es Tuya.';
       }
     }
   });
 }
 
-initAmericaAuth();
+initAmericaAuth().catch((e) => {
+  console.error('Error inicializando Firebase Auth', e);
+  const status = document.getElementById('authStatus');
+  if (status) status.textContent = 'No se pudo iniciar Firebase Authentication.';
+});
