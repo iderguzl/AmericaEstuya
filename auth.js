@@ -25,8 +25,8 @@ async function initAmericaAuth() {
   if (!gate || !app) return;
 
   const [{ initializeApp }, {
-    getAuth, onAuthStateChanged, signInWithPopup,
-    signOut, GoogleAuthProvider, FacebookAuthProvider
+    getAuth, onAuthStateChanged, signInWithPopup, signInWithRedirect,
+    getRedirectResult, signOut, GoogleAuthProvider, FacebookAuthProvider
   }] = await Promise.all([
     import('https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js'),
     import('https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js')
@@ -41,10 +41,8 @@ async function initAmericaAuth() {
   const facebookProvider = new FacebookAuthProvider();
   facebookProvider.addScope('email');
 
-  // Clean up the old redirect flag from the previous implementation.
-  sessionStorage.removeItem('facebookRedirectPending');
+  let loginInProgress = sessionStorage.getItem('facebookRedirectPending') === '1';
 
-  let loginInProgress = false;
   const setButtons = disabled => {
     if (googleBtn) googleBtn.disabled = disabled;
     if (facebookBtn) facebookBtn.disabled = disabled;
@@ -54,6 +52,7 @@ async function initAmericaAuth() {
     console.error('AUTH ERROR', err);
     const code = err?.code || 'sin-codigo';
     loginInProgress = false;
+    sessionStorage.removeItem('facebookRedirectPending');
     setButtons(false);
 
     if (code === 'auth/account-exists-with-different-credential') {
@@ -67,13 +66,36 @@ async function initAmericaAuth() {
     } else if (code === 'auth/network-request-failed') {
       status.textContent = 'Falló la conexión con Firebase. Revisa Internet e inténtalo nuevamente.';
     } else if (code === 'auth/popup-blocked') {
-      status.textContent = 'El navegador bloqueó la ventana de Facebook. Permite ventanas emergentes para este sitio e inténtalo otra vez.';
+      status.textContent = 'El navegador bloqueó la ventana de acceso.';
     } else if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-      status.textContent = 'El inicio con Facebook fue cancelado. Puedes intentarlo de nuevo.';
+      status.textContent = 'La ventana de acceso se cerró antes de completar el inicio de sesión.';
     } else {
       status.textContent = 'Error de acceso: ' + code;
     }
   };
+
+  // Complete a Facebook redirect, if this page is loading after returning from Facebook/Firebase.
+  if (loginInProgress) {
+    setButtons(true);
+    status.textContent = 'Completando inicio con Facebook…';
+  }
+
+  try {
+    const redirectResult = await getRedirectResult(auth);
+    if (redirectResult?.user) {
+      sessionStorage.removeItem('facebookRedirectPending');
+      loginInProgress = false;
+    } else if (loginInProgress) {
+      // We returned to the site but Firebase did not produce a user.
+      // Do not call it a cancellation: simply restore the login screen.
+      sessionStorage.removeItem('facebookRedirectPending');
+      loginInProgress = false;
+      setButtons(false);
+      status.textContent = 'No se completó el inicio con Facebook. Inténtalo otra vez.';
+    }
+  } catch (e) {
+    showError(e);
+  }
 
   const loginGoogle = async () => {
     if (loginInProgress) return;
@@ -96,14 +118,13 @@ async function initAmericaAuth() {
     loginInProgress = true;
     setButtons(true);
     status.textContent = 'Abriendo Facebook…';
+    sessionStorage.setItem('facebookRedirectPending', '1');
 
     try {
-      await signInWithPopup(auth, facebookProvider);
+      // Redirect is more reliable than popup on Android/mobile browsers.
+      await signInWithRedirect(auth, facebookProvider);
     } catch (e) {
       showError(e);
-    } finally {
-      loginInProgress = false;
-      setButtons(false);
     }
   };
 
@@ -114,6 +135,7 @@ async function initAmericaAuth() {
   onAuthStateChanged(auth, user => {
     if (user) {
       loginInProgress = false;
+      sessionStorage.removeItem('facebookRedirectPending');
       setButtons(false);
       gate.style.display = 'none';
       app.style.display = 'block';
@@ -132,7 +154,9 @@ async function initAmericaAuth() {
       userBox.hidden = true;
       if (!loginInProgress) {
         setButtons(false);
-        status.textContent = 'Inicia sesión para entrar a América es Tuya.';
+        if (!status.textContent || status.textContent === 'Comprobando acceso…') {
+          status.textContent = 'Inicia sesión para entrar a América es Tuya.';
+        }
       }
     }
   });
