@@ -25,8 +25,8 @@ async function initAmericaAuth() {
   if (!gate || !app) return;
 
   const [{ initializeApp }, {
-    getAuth, onAuthStateChanged, signInWithPopup, signInWithRedirect,
-    getRedirectResult, signOut, GoogleAuthProvider, FacebookAuthProvider
+    getAuth, onAuthStateChanged, signInWithPopup,
+    signOut, GoogleAuthProvider, FacebookAuthProvider
   }] = await Promise.all([
     import('https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js'),
     import('https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js')
@@ -34,69 +34,106 @@ async function initAmericaAuth() {
 
   const firebaseApp = initializeApp(FIREBASE_CONFIG);
   const auth = getAuth(firebaseApp);
+
   const googleProvider = new GoogleAuthProvider();
   googleProvider.setCustomParameters({ prompt: 'select_account' });
+
   const facebookProvider = new FacebookAuthProvider();
   facebookProvider.addScope('email');
 
-  let loginInProgress = sessionStorage.getItem('facebookRedirectPending') === '1';
-  const setButtons = disabled => { googleBtn.disabled = disabled; facebookBtn.disabled = disabled; };
+  // Clean up the old redirect flag from the previous implementation.
+  sessionStorage.removeItem('facebookRedirectPending');
+
+  let loginInProgress = false;
+  const setButtons = disabled => {
+    if (googleBtn) googleBtn.disabled = disabled;
+    if (facebookBtn) facebookBtn.disabled = disabled;
+  };
 
   const showError = err => {
     console.error('AUTH ERROR', err);
     const code = err?.code || 'sin-codigo';
-    sessionStorage.removeItem('facebookRedirectPending');
     loginInProgress = false;
     setButtons(false);
-    if (code === 'auth/account-exists-with-different-credential') status.textContent = 'Ese correo ya está registrado con otro método de acceso. (' + code + ')';
-    else if (code === 'auth/operation-not-allowed') status.textContent = 'Facebook no está habilitado correctamente en Firebase. (' + code + ')';
-    else if (code === 'auth/unauthorized-domain') status.textContent = 'Falta autorizar iderguzl.github.io en Firebase. (' + code + ')';
-    else if (code === 'auth/configuration-not-found') status.textContent = 'Firebase Authentication todavía no está configurado. (' + code + ')';
-    else if (code === 'auth/network-request-failed') status.textContent = 'Falló la conexión con Firebase. Revisa Internet e inténtalo nuevamente.';
-    else status.textContent = 'Error de acceso: ' + code;
+
+    if (code === 'auth/account-exists-with-different-credential') {
+      status.textContent = 'Ese correo ya está registrado con otro método de acceso. (' + code + ')';
+    } else if (code === 'auth/operation-not-allowed') {
+      status.textContent = 'Facebook no está habilitado correctamente en Firebase. (' + code + ')';
+    } else if (code === 'auth/unauthorized-domain') {
+      status.textContent = 'Falta autorizar iderguzl.github.io en Firebase. (' + code + ')';
+    } else if (code === 'auth/configuration-not-found') {
+      status.textContent = 'Firebase Authentication todavía no está configurado. (' + code + ')';
+    } else if (code === 'auth/network-request-failed') {
+      status.textContent = 'Falló la conexión con Firebase. Revisa Internet e inténtalo nuevamente.';
+    } else if (code === 'auth/popup-blocked') {
+      status.textContent = 'El navegador bloqueó la ventana de Facebook. Permite ventanas emergentes para este sitio e inténtalo otra vez.';
+    } else if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+      status.textContent = 'El inicio con Facebook fue cancelado. Puedes intentarlo de nuevo.';
+    } else {
+      status.textContent = 'Error de acceso: ' + code;
+    }
   };
 
   const loginGoogle = async () => {
     if (loginInProgress) return;
-    loginInProgress = true; setButtons(true); status.textContent = 'Abriendo Google…';
-    try { await signInWithPopup(auth, googleProvider); }
-    catch (e) { showError(e); }
-    finally { loginInProgress = false; setButtons(false); }
+    loginInProgress = true;
+    setButtons(true);
+    status.textContent = 'Abriendo Google…';
+
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (e) {
+      showError(e);
+    } finally {
+      loginInProgress = false;
+      setButtons(false);
+    }
   };
 
   const loginFacebook = async () => {
     if (loginInProgress) return;
     loginInProgress = true;
-    sessionStorage.setItem('facebookRedirectPending', '1');
     setButtons(true);
-    status.textContent = 'Abriendo Facebook en esta página…';
-    try { await signInWithRedirect(auth, facebookProvider); }
-    catch (e) { showError(e); }
+    status.textContent = 'Abriendo Facebook…';
+
+    try {
+      await signInWithPopup(auth, facebookProvider);
+    } catch (e) {
+      showError(e);
+    } finally {
+      loginInProgress = false;
+      setButtons(false);
+    }
   };
 
   googleBtn.onclick = loginGoogle;
   facebookBtn.onclick = loginFacebook;
   logoutBtn.onclick = () => signOut(auth);
 
-  if (loginInProgress) { setButtons(true); status.textContent = 'Completando inicio con Facebook…'; }
-  try {
-    const result = await getRedirectResult(auth);
-    if (result) {
-      sessionStorage.removeItem('facebookRedirectPending');
-      loginInProgress = false;
-    }
-  } catch (e) { showError(e); }
-
   onAuthStateChanged(auth, user => {
     if (user) {
-      sessionStorage.removeItem('facebookRedirectPending');
       loginInProgress = false;
-      gate.style.display = 'none'; app.style.display = 'block'; userBox.hidden = false;
+      setButtons(false);
+      gate.style.display = 'none';
+      app.style.display = 'block';
+      userBox.hidden = false;
       userName.textContent = user.displayName || user.email || 'Usuario';
-      if (user.photoURL) { userPic.src = user.photoURL; userPic.hidden = false; } else userPic.hidden = true;
+
+      if (user.photoURL) {
+        userPic.src = user.photoURL;
+        userPic.hidden = false;
+      } else {
+        userPic.hidden = true;
+      }
     } else {
-      gate.style.display = 'grid'; app.style.display = 'none'; userBox.hidden = true;
-      if (!loginInProgress) { setButtons(false); status.textContent = 'Inicia sesión para entrar a América es Tuya.'; }
+      gate.style.display = 'grid';
+      app.style.display = 'none';
+      userBox.hidden = true;
+      if (!loginInProgress) {
+        setButtons(false);
+        status.textContent = 'Inicia sesión para entrar a América es Tuya.';
+      }
     }
   });
 }
