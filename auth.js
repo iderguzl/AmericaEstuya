@@ -25,7 +25,8 @@ async function initAmericaAuth() {
   if (!gate || !app) return;
 
   const [{ initializeApp }, {
-    getAuth, onAuthStateChanged, signInWithPopup,
+    getAuth, onAuthStateChanged, signInWithPopup, signInWithRedirect,
+    getRedirectResult, setPersistence, browserLocalPersistence,
     signOut, GoogleAuthProvider, FacebookAuthProvider
   }] = await Promise.all([
     import('https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js'),
@@ -34,12 +35,14 @@ async function initAmericaAuth() {
 
   const firebaseApp = initializeApp(FIREBASE_CONFIG);
   const auth = getAuth(firebaseApp);
+  await setPersistence(auth, browserLocalPersistence);
 
   const googleProvider = new GoogleAuthProvider();
   googleProvider.setCustomParameters({ prompt: 'select_account' });
 
   const facebookProvider = new FacebookAuthProvider();
   facebookProvider.addScope('email');
+  facebookProvider.setCustomParameters({ display: 'touch' });
 
   let loginInProgress = false;
 
@@ -52,6 +55,7 @@ async function initAmericaAuth() {
     console.error('AUTH ERROR', err);
     const code = err?.code || 'sin-codigo';
     loginInProgress = false;
+    sessionStorage.removeItem('americaAuthRedirect');
     setButtons(false);
 
     if (code === 'auth/account-exists-with-different-credential') {
@@ -65,13 +69,38 @@ async function initAmericaAuth() {
     } else if (code === 'auth/network-request-failed') {
       status.textContent = 'Falló la conexión con Firebase. Revisa Internet e inténtalo nuevamente.';
     } else if (code === 'auth/popup-blocked') {
-      status.textContent = 'El navegador bloqueó la ventana de Facebook. Permite ventanas emergentes e inténtalo otra vez.';
+      status.textContent = 'El navegador bloqueó la ventana de acceso.';
     } else if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-      status.textContent = 'La ventana de Facebook se cerró antes de completar el inicio de sesión.';
+      status.textContent = 'La ventana de acceso se cerró antes de completar el inicio de sesión.';
     } else {
       status.textContent = 'Error de acceso: ' + code;
     }
   };
+
+  // IMPORTANT: process a redirect immediately when the page comes back from Firebase.
+  // This was the missing part that left Android showing “Abriendo Facebook…” until refresh.
+  if (sessionStorage.getItem('americaAuthRedirect')) {
+    loginInProgress = true;
+    setButtons(true);
+    status.textContent = 'Completando inicio de sesión…';
+  }
+
+  try {
+    const redirectResult = await getRedirectResult(auth);
+    if (redirectResult?.user) {
+      sessionStorage.removeItem('americaAuthRedirect');
+      loginInProgress = false;
+      status.textContent = 'Acceso correcto.';
+    } else if (sessionStorage.getItem('americaAuthRedirect')) {
+      // We returned from the redirect but Firebase did not produce a user.
+      sessionStorage.removeItem('americaAuthRedirect');
+      loginInProgress = false;
+      setButtons(false);
+      status.textContent = 'Facebook no completó el acceso. Inténtalo nuevamente.';
+    }
+  } catch (e) {
+    showError(e);
+  }
 
   const loginGoogle = async () => {
     if (loginInProgress) return;
@@ -93,17 +122,28 @@ async function initAmericaAuth() {
     if (loginInProgress) return;
     loginInProgress = true;
     setButtons(true);
-    status.textContent = 'Abriendo Facebook…';
 
     try {
-      // Use popup instead of redirect. On GitHub Pages, Firebase redirect can
-      // return to the site without completing automatically on some mobile browsers.
+      // On Android/mobile, do NOT open a Firebase popup/custom-tab.
+      // Redirect the whole page and consume the result above when it comes back.
+      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      if (isMobile) {
+        sessionStorage.setItem('americaAuthRedirect', 'facebook');
+        status.textContent = 'Entrando a Facebook…';
+        await signInWithRedirect(auth, facebookProvider);
+        return;
+      }
+
+      status.textContent = 'Abriendo Facebook…';
       await signInWithPopup(auth, facebookProvider);
     } catch (e) {
       showError(e);
     } finally {
-      loginInProgress = false;
-      setButtons(false);
+      // Redirect navigates away, so this only matters for popup/error cases.
+      if (!sessionStorage.getItem('americaAuthRedirect')) {
+        loginInProgress = false;
+        setButtons(false);
+      }
     }
   };
 
@@ -113,6 +153,7 @@ async function initAmericaAuth() {
 
   onAuthStateChanged(auth, user => {
     if (user) {
+      sessionStorage.removeItem('americaAuthRedirect');
       loginInProgress = false;
       setButtons(false);
       gate.style.display = 'none';
