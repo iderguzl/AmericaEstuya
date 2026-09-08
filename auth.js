@@ -25,8 +25,8 @@ async function initAmericaAuth() {
   if (!gate || !app) return;
 
   const [{ initializeApp }, {
-    getAuth, onAuthStateChanged, signInWithPopup, signInWithRedirect,
-    getRedirectResult, setPersistence, browserLocalPersistence,
+    getAuth, onAuthStateChanged, signInWithPopup,
+    setPersistence, browserLocalPersistence,
     signOut, GoogleAuthProvider, FacebookAuthProvider
   }] = await Promise.all([
     import('https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js'),
@@ -44,9 +44,6 @@ async function initAmericaAuth() {
   facebookProvider.addScope('email');
   facebookProvider.setCustomParameters({ display: 'touch' });
 
-  const pageParams = new URLSearchParams(window.location.search);
-  const facebookAuthTab = pageParams.get('facebookAuthTab') === '1';
-
   let loginInProgress = false;
 
   const setButtons = disabled => {
@@ -54,18 +51,11 @@ async function initAmericaAuth() {
     if (facebookBtn) facebookBtn.disabled = disabled;
   };
 
-  const clearFacebookTabParam = () => {
-    if (!facebookAuthTab) return;
-    const cleanUrl = new URL(window.location.href);
-    cleanUrl.searchParams.delete('facebookAuthTab');
-    history.replaceState({}, '', cleanUrl.toString());
-  };
-
   const showError = err => {
     console.error('AUTH ERROR', err);
     const code = err?.code || 'sin-codigo';
+    const message = err?.message || '';
     loginInProgress = false;
-    sessionStorage.removeItem('americaAuthRedirect');
     setButtons(false);
 
     if (code === 'auth/account-exists-with-different-credential') {
@@ -77,64 +67,26 @@ async function initAmericaAuth() {
     } else if (code === 'auth/configuration-not-found') {
       status.textContent = 'Firebase Authentication todavía no está configurado. (' + code + ')';
     } else if (code === 'auth/network-request-failed') {
-      status.textContent = 'Falló la conexión con Firebase. Revisa Internet e inténtalo nuevamente.';
+      status.textContent = 'Falló la conexión con Firebase. (' + code + ')';
     } else if (code === 'auth/popup-blocked') {
-      status.textContent = 'El navegador bloqueó la pestaña de acceso.';
-    } else if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-      status.textContent = 'La ventana de acceso se cerró antes de completar el inicio de sesión.';
+      status.textContent = 'El navegador bloqueó la ventana/pestaña de Facebook. (' + code + ')';
+    } else if (code === 'auth/popup-closed-by-user') {
+      status.textContent = 'Facebook cerró o devolvió la ventana antes de completar. (' + code + ')';
+    } else if (code === 'auth/cancelled-popup-request') {
+      status.textContent = 'Se canceló la ventana de Facebook. (' + code + ')';
     } else {
-      status.textContent = 'Error de acceso: ' + code;
+      status.textContent = 'ERROR FACEBOOK: ' + code + (message ? ' — ' + message : '');
     }
   };
-
-  if (sessionStorage.getItem('americaAuthRedirect')) {
-    loginInProgress = true;
-    setButtons(true);
-    status.textContent = 'Completando inicio de sesión…';
-  }
-
-  try {
-    const redirectResult = await getRedirectResult(auth);
-    if (redirectResult?.user) {
-      sessionStorage.removeItem('americaAuthRedirect');
-      loginInProgress = false;
-      clearFacebookTabParam();
-      status.textContent = 'Acceso correcto.';
-    } else if (sessionStorage.getItem('americaAuthRedirect')) {
-      sessionStorage.removeItem('americaAuthRedirect');
-      loginInProgress = false;
-      setButtons(false);
-      clearFacebookTabParam();
-      status.textContent = 'Facebook no completó el acceso. Inténtalo nuevamente.';
-    }
-  } catch (e) {
-    showError(e);
-  }
-
-  // A tab opened specifically for Facebook starts the redirect inside that tab.
-  // This keeps the original AmericaEsTuya page open so screenshots can be taken easily.
-  if (facebookAuthTab && !sessionStorage.getItem('americaAuthRedirect') && !auth.currentUser) {
-    loginInProgress = true;
-    setButtons(true);
-    sessionStorage.setItem('americaAuthRedirect', 'facebook');
-    status.textContent = 'Abriendo Facebook en esta pestaña…';
-    try {
-      await signInWithRedirect(auth, facebookProvider);
-      return;
-    } catch (e) {
-      showError(e);
-      return;
-    }
-  }
 
   const loginGoogle = async () => {
     if (loginInProgress) return;
     loginInProgress = true;
     setButtons(true);
     status.textContent = 'Abriendo Google…';
-
     try {
       await signInWithPopup(auth, googleProvider);
+      status.textContent = 'Acceso correcto.';
     } catch (e) {
       showError(e);
     } finally {
@@ -143,19 +95,25 @@ async function initAmericaAuth() {
     }
   };
 
-  const loginFacebook = () => {
+  const loginFacebook = async () => {
     if (loginInProgress) return;
+    loginInProgress = true;
+    setButtons(true);
+    status.textContent = 'Abriendo Facebook…';
 
-    const facebookUrl = new URL(window.location.href);
-    facebookUrl.searchParams.set('facebookAuthTab', '1');
-
-    const newTab = window.open(facebookUrl.toString(), '_blank');
-    if (!newTab) {
-      status.textContent = 'El navegador bloqueó la pestaña nueva. Permite ventanas emergentes para este sitio.';
-      return;
+    try {
+      const result = await signInWithPopup(auth, facebookProvider);
+      if (result?.user) {
+        status.textContent = 'Acceso con Facebook correcto.';
+      } else {
+        status.textContent = 'Facebook regresó sin completar el acceso.';
+      }
+    } catch (e) {
+      showError(e);
+    } finally {
+      loginInProgress = false;
+      setButtons(false);
     }
-
-    status.textContent = 'Facebook se abrió en una pestaña nueva.';
   };
 
   googleBtn.onclick = loginGoogle;
@@ -164,7 +122,6 @@ async function initAmericaAuth() {
 
   onAuthStateChanged(auth, user => {
     if (user) {
-      sessionStorage.removeItem('americaAuthRedirect');
       loginInProgress = false;
       setButtons(false);
       gate.style.display = 'none';
@@ -195,5 +152,5 @@ async function initAmericaAuth() {
 initAmericaAuth().catch(e => {
   console.error('Error inicializando Firebase Auth', e);
   const status = document.getElementById('authStatus');
-  if (status) status.textContent = 'No se pudo iniciar Firebase Authentication.';
+  if (status) status.textContent = 'No se pudo iniciar Firebase Authentication: ' + (e?.message || e);
 });
