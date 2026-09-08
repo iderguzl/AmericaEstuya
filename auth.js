@@ -44,11 +44,21 @@ async function initAmericaAuth() {
   facebookProvider.addScope('email');
   facebookProvider.setCustomParameters({ display: 'touch' });
 
+  const pageParams = new URLSearchParams(window.location.search);
+  const facebookAuthTab = pageParams.get('facebookAuthTab') === '1';
+
   let loginInProgress = false;
 
   const setButtons = disabled => {
     if (googleBtn) googleBtn.disabled = disabled;
     if (facebookBtn) facebookBtn.disabled = disabled;
+  };
+
+  const clearFacebookTabParam = () => {
+    if (!facebookAuthTab) return;
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete('facebookAuthTab');
+    history.replaceState({}, '', cleanUrl.toString());
   };
 
   const showError = err => {
@@ -69,7 +79,7 @@ async function initAmericaAuth() {
     } else if (code === 'auth/network-request-failed') {
       status.textContent = 'Falló la conexión con Firebase. Revisa Internet e inténtalo nuevamente.';
     } else if (code === 'auth/popup-blocked') {
-      status.textContent = 'El navegador bloqueó la ventana de acceso.';
+      status.textContent = 'El navegador bloqueó la pestaña de acceso.';
     } else if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
       status.textContent = 'La ventana de acceso se cerró antes de completar el inicio de sesión.';
     } else {
@@ -77,8 +87,6 @@ async function initAmericaAuth() {
     }
   };
 
-  // IMPORTANT: process a redirect immediately when the page comes back from Firebase.
-  // This was the missing part that left Android showing “Abriendo Facebook…” until refresh.
   if (sessionStorage.getItem('americaAuthRedirect')) {
     loginInProgress = true;
     setButtons(true);
@@ -90,16 +98,33 @@ async function initAmericaAuth() {
     if (redirectResult?.user) {
       sessionStorage.removeItem('americaAuthRedirect');
       loginInProgress = false;
+      clearFacebookTabParam();
       status.textContent = 'Acceso correcto.';
     } else if (sessionStorage.getItem('americaAuthRedirect')) {
-      // We returned from the redirect but Firebase did not produce a user.
       sessionStorage.removeItem('americaAuthRedirect');
       loginInProgress = false;
       setButtons(false);
+      clearFacebookTabParam();
       status.textContent = 'Facebook no completó el acceso. Inténtalo nuevamente.';
     }
   } catch (e) {
     showError(e);
+  }
+
+  // A tab opened specifically for Facebook starts the redirect inside that tab.
+  // This keeps the original AmericaEsTuya page open so screenshots can be taken easily.
+  if (facebookAuthTab && !sessionStorage.getItem('americaAuthRedirect') && !auth.currentUser) {
+    loginInProgress = true;
+    setButtons(true);
+    sessionStorage.setItem('americaAuthRedirect', 'facebook');
+    status.textContent = 'Abriendo Facebook en esta pestaña…';
+    try {
+      await signInWithRedirect(auth, facebookProvider);
+      return;
+    } catch (e) {
+      showError(e);
+      return;
+    }
   }
 
   const loginGoogle = async () => {
@@ -118,33 +143,19 @@ async function initAmericaAuth() {
     }
   };
 
-  const loginFacebook = async () => {
+  const loginFacebook = () => {
     if (loginInProgress) return;
-    loginInProgress = true;
-    setButtons(true);
 
-    try {
-      // On Android/mobile, do NOT open a Firebase popup/custom-tab.
-      // Redirect the whole page and consume the result above when it comes back.
-      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-      if (isMobile) {
-        sessionStorage.setItem('americaAuthRedirect', 'facebook');
-        status.textContent = 'Entrando a Facebook…';
-        await signInWithRedirect(auth, facebookProvider);
-        return;
-      }
+    const facebookUrl = new URL(window.location.href);
+    facebookUrl.searchParams.set('facebookAuthTab', '1');
 
-      status.textContent = 'Abriendo Facebook…';
-      await signInWithPopup(auth, facebookProvider);
-    } catch (e) {
-      showError(e);
-    } finally {
-      // Redirect navigates away, so this only matters for popup/error cases.
-      if (!sessionStorage.getItem('americaAuthRedirect')) {
-        loginInProgress = false;
-        setButtons(false);
-      }
+    const newTab = window.open(facebookUrl.toString(), '_blank');
+    if (!newTab) {
+      status.textContent = 'El navegador bloqueó la pestaña nueva. Permite ventanas emergentes para este sitio.';
+      return;
     }
+
+    status.textContent = 'Facebook se abrió en una pestaña nueva.';
   };
 
   googleBtn.onclick = loginGoogle;
