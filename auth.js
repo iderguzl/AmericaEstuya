@@ -26,8 +26,8 @@ async function initAmericaAuth() {
   if (!gate || !app) return;
 
   const [{ initializeApp }, {
-    getAuth, onAuthStateChanged, signInWithPopup, signInWithRedirect,
-    getRedirectResult, signOut, GoogleAuthProvider, FacebookAuthProvider
+    getAuth, onAuthStateChanged, signInWithPopup, signOut,
+    GoogleAuthProvider, FacebookAuthProvider
   }] = await Promise.all([
     import('https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js'),
     import('https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js')
@@ -38,6 +38,14 @@ async function initAmericaAuth() {
   const googleProvider = new GoogleAuthProvider();
   const facebookProvider = new FacebookAuthProvider();
   facebookProvider.addScope('email');
+  facebookProvider.setCustomParameters({ display: 'popup' });
+
+  let loginInProgress = false;
+
+  const setButtons = (disabled) => {
+    googleBtn.disabled = disabled;
+    facebookBtn.disabled = disabled;
+  };
 
   const showError = (err) => {
     console.error(err);
@@ -51,61 +59,36 @@ async function initAmericaAuth() {
     } else if (code === 'auth/configuration-not-found') {
       status.textContent = 'Firebase Authentication todavía no está configurado. (' + code + ')';
     } else if (code === 'auth/popup-blocked') {
-      status.textContent = 'El navegador bloqueó la ventana de acceso. (' + code + ')';
+      status.textContent = 'Chrome bloqueó la ventana de Facebook. Permite ventanas emergentes para este sitio e inténtalo otra vez.';
     } else if (code === 'auth/popup-closed-by-user') {
-      status.textContent = 'Se cerró la ventana de acceso antes de terminar. (' + code + ')';
+      status.textContent = 'Facebook cerró la ventana de acceso antes de completar el inicio. Inténtalo nuevamente y no cierres la ventana.';
     } else if (code === 'auth/cancelled-popup-request') {
-      status.textContent = 'Había otra ventana de acceso pendiente. Inténtalo una sola vez. (' + code + ')';
+      status.textContent = 'Había otro inicio de sesión pendiente. Espera un momento y toca el botón una sola vez.';
     } else if (code === 'auth/network-request-failed') {
-      status.textContent = 'Falló la conexión con Firebase. (' + code + ')';
+      status.textContent = 'Falló la conexión con Firebase. Revisa Internet e inténtalo nuevamente.';
     } else {
       status.textContent = 'Error de acceso: ' + code;
     }
   };
 
-  googleBtn.disabled = false;
-  facebookBtn.disabled = false;
-
-  // Google conserva popup. Evitamos dobles clics mientras la ventana está activa.
-  googleBtn.onclick = async () => {
-    if (googleBtn.disabled) return;
-    googleBtn.disabled = true;
-    status.textContent = 'Abriendo Google…';
+  const loginWithPopup = async (provider, name) => {
+    if (loginInProgress) return;
+    loginInProgress = true;
+    setButtons(true);
+    status.textContent = 'Abriendo ' + name + '…';
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithPopup(auth, provider);
     } catch (e) {
       showError(e);
     } finally {
-      googleBtn.disabled = false;
+      loginInProgress = false;
+      setButtons(false);
     }
   };
 
-  // Facebook usa redirect: es más fiable en Chrome/Android que un popup.
-  // El botón se bloquea inmediatamente para que un segundo toque no cancele el primer intento.
-  facebookBtn.onclick = async () => {
-    if (facebookBtn.disabled) return;
-    facebookBtn.disabled = true;
-    googleBtn.disabled = true;
-    status.textContent = 'Abriendo Facebook…';
-    try {
-      await signInWithRedirect(auth, facebookProvider);
-    } catch (e) {
-      facebookBtn.disabled = false;
-      googleBtn.disabled = false;
-      showError(e);
-    }
-  };
-
+  googleBtn.onclick = () => loginWithPopup(googleProvider, 'Google');
+  facebookBtn.onclick = () => loginWithPopup(facebookProvider, 'Facebook');
   logoutBtn.onclick = () => signOut(auth);
-
-  // Cuando Facebook devuelve al usuario a la web, recogemos el resultado del redirect.
-  try {
-    await getRedirectResult(auth);
-  } catch (e) {
-    facebookBtn.disabled = false;
-    googleBtn.disabled = false;
-    showError(e);
-  }
 
   onAuthStateChanged(auth, (user) => {
     if (user) {
@@ -123,10 +106,11 @@ async function initAmericaAuth() {
       gate.style.display = 'grid';
       app.style.display = 'none';
       userBox.hidden = true;
-      googleBtn.disabled = false;
-      facebookBtn.disabled = false;
-      if (!status.textContent.startsWith('Error') && !status.textContent.includes('(')) {
-        status.textContent = 'Inicia sesión para entrar a América es Tuya.';
+      if (!loginInProgress) {
+        setButtons(false);
+        if (!status.textContent.includes('Error') && !status.textContent.includes('Facebook cerró') && !status.textContent.includes('Chrome bloqueó')) {
+          status.textContent = 'Inicia sesión para entrar a América es Tuya.';
+        }
       }
     }
   });
