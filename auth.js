@@ -26,6 +26,7 @@ async function initAmericaAuth() {
 
   const [{ initializeApp }, {
     getAuth, onAuthStateChanged, signInWithPopup,
+    signInWithRedirect, getRedirectResult,
     setPersistence, browserLocalPersistence,
     signOut, GoogleAuthProvider, FacebookAuthProvider
   }] = await Promise.all([
@@ -68,16 +69,20 @@ async function initAmericaAuth() {
       status.textContent = 'Firebase Authentication todavía no está configurado. (' + code + ')';
     } else if (code === 'auth/network-request-failed') {
       status.textContent = 'Falló la conexión con Firebase. (' + code + ')';
-    } else if (code === 'auth/popup-blocked') {
-      status.textContent = 'El navegador bloqueó la ventana/pestaña de Facebook. (' + code + ')';
-    } else if (code === 'auth/popup-closed-by-user') {
-      status.textContent = 'Facebook cerró o devolvió la ventana antes de completar. (' + code + ')';
-    } else if (code === 'auth/cancelled-popup-request') {
-      status.textContent = 'Se canceló la ventana de Facebook. (' + code + ')';
     } else {
       status.textContent = 'ERROR FACEBOOK: ' + code + (message ? ' — ' + message : '');
     }
   };
+
+  // Al regresar de Facebook, Firebase entrega aquí el resultado del redirect.
+  try {
+    const redirectResult = await getRedirectResult(auth);
+    if (redirectResult?.user) {
+      status.textContent = 'Acceso con Facebook correcto.';
+    }
+  } catch (e) {
+    showError(e);
+  }
 
   const loginGoogle = async () => {
     if (loginInProgress) return;
@@ -102,23 +107,17 @@ async function initAmericaAuth() {
     status.textContent = 'Abriendo Facebook…';
 
     try {
-      const result = await signInWithPopup(auth, facebookProvider);
-      if (result?.user) {
-        status.textContent = 'Acceso con Facebook correcto.';
-      } else {
-        status.textContent = 'Facebook regresó sin completar el acceso.';
-      }
+      // Facebook usa redirect en la misma pestaña. No se abre ni se detecta
+      // ninguna pestaña nueva; Firebase volverá a esta página al terminar.
+      await signInWithRedirect(auth, facebookProvider);
     } catch (e) {
       showError(e);
-    } finally {
-      loginInProgress = false;
-      setButtons(false);
     }
   };
 
-  googleBtn.onclick = loginGoogle;
-  facebookBtn.onclick = loginFacebook;
-  logoutBtn.onclick = () => signOut(auth);
+  if (googleBtn) googleBtn.onclick = loginGoogle;
+  if (facebookBtn) facebookBtn.onclick = loginFacebook;
+  if (logoutBtn) logoutBtn.onclick = () => signOut(auth);
 
   onAuthStateChanged(auth, user => {
     if (user) {
