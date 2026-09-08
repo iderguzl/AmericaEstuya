@@ -26,7 +26,7 @@ async function initAmericaAuth() {
 
   const [{ initializeApp }, {
     getAuth, onAuthStateChanged, signInWithPopup,
-    signInWithRedirect, getRedirectResult,
+    getRedirectResult,
     setPersistence, browserLocalPersistence,
     signOut, GoogleAuthProvider, FacebookAuthProvider
   }] = await Promise.all([
@@ -69,16 +69,22 @@ async function initAmericaAuth() {
       status.textContent = 'Firebase Authentication todavía no está configurado. (' + code + ')';
     } else if (code === 'auth/network-request-failed') {
       status.textContent = 'Falló la conexión con Firebase. (' + code + ')';
+    } else if (code === 'auth/popup-closed-by-user') {
+      status.textContent = 'Se cerró Facebook antes de terminar el acceso.';
+    } else if (code === 'auth/popup-blocked') {
+      status.textContent = 'Chrome bloqueó la ventana de Facebook. Permite ventanas emergentes para este sitio.';
+    } else if (code === 'auth/cancelled-popup-request') {
+      status.textContent = 'Ya hay un acceso en curso. Inténtalo otra vez.';
     } else {
       status.textContent = 'ERROR FACEBOOK: ' + code + (message ? ' — ' + message : '');
     }
   };
 
-  // Al regresar de Facebook, Firebase entrega aquí el resultado del redirect.
+  // Conservamos esto solo para completar cualquier redirect antiguo pendiente.
   try {
     const redirectResult = await getRedirectResult(auth);
     if (redirectResult?.user) {
-      status.textContent = 'Acceso con Facebook correcto.';
+      status.textContent = 'Acceso correcto.';
     }
   } catch (e) {
     showError(e);
@@ -107,11 +113,17 @@ async function initAmericaAuth() {
     status.textContent = 'Abriendo Facebook…';
 
     try {
-      // Facebook usa redirect en la misma pestaña. No se abre ni se detecta
-      // ninguna pestaña nueva; Firebase volverá a esta página al terminar.
-      await signInWithRedirect(auth, facebookProvider);
+      // En GitHub Pages evitamos signInWithRedirect porque el dominio de
+      // autenticación de Firebase es distinto y algunos navegadores móviles
+      // no completan correctamente el retorno. Popup mantiene la página
+      // original abierta y Firebase devuelve aquí el resultado.
+      const result = await signInWithPopup(auth, facebookProvider);
+      if (result?.user) status.textContent = 'Acceso con Facebook correcto.';
     } catch (e) {
       showError(e);
+    } finally {
+      loginInProgress = false;
+      setButtons(false);
     }
   };
 
