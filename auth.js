@@ -12,6 +12,22 @@ const FIREBASE_CONFIG = {
   measurementId: "G-8K579LVLX1"
 };
 
+const FB_REDIRECT_KEY = 'americaestuya_fb_redirect_pending';
+const FB_RELOAD_KEY = 'americaestuya_fb_return_reloaded';
+
+// Algunos Chrome móviles restauran la página anterior desde BFCache al volver
+// de Facebook. En ese caso el JavaScript no se reinicia y queda visible
+// "Abriendo Facebook…". Forzamos UNA recarga limpia para que Firebase pueda
+// leer el resultado del redirect.
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted && sessionStorage.getItem(FB_REDIRECT_KEY) === '1') {
+    if (sessionStorage.getItem(FB_RELOAD_KEY) !== '1') {
+      sessionStorage.setItem(FB_RELOAD_KEY, '1');
+      window.location.reload();
+    }
+  }
+});
+
 async function initAmericaAuth() {
   const gate = document.getElementById('authGate');
   const app = document.getElementById('siteApp');
@@ -45,10 +61,29 @@ async function initAmericaAuth() {
   facebookProvider.addScope('email');
 
   let loginInProgress = false;
+  const returningFromFacebook = sessionStorage.getItem(FB_REDIRECT_KEY) === '1';
 
   const setButtons = disabled => {
     if (googleBtn) googleBtn.disabled = disabled;
     if (facebookBtn) facebookBtn.disabled = disabled;
+  };
+
+  const showMainSite = user => {
+    loginInProgress = false;
+    sessionStorage.removeItem(FB_REDIRECT_KEY);
+    sessionStorage.removeItem(FB_RELOAD_KEY);
+    setButtons(false);
+    gate.style.display = 'none';
+    app.style.display = 'block';
+    userBox.hidden = false;
+    userName.textContent = 'Conectado como ' + (user.displayName || user.email || 'Usuario');
+
+    if (user.photoURL) {
+      userPic.src = user.photoURL;
+      userPic.hidden = false;
+    } else {
+      userPic.hidden = true;
+    }
   };
 
   const showError = err => {
@@ -56,6 +91,8 @@ async function initAmericaAuth() {
     const code = err?.code || 'sin-codigo';
     const message = err?.message || '';
     loginInProgress = false;
+    sessionStorage.removeItem(FB_REDIRECT_KEY);
+    sessionStorage.removeItem(FB_RELOAD_KEY);
     setButtons(false);
 
     if (code === 'auth/account-exists-with-different-credential') {
@@ -73,11 +110,19 @@ async function initAmericaAuth() {
     }
   };
 
-  // Al volver de Facebook en la MISMA pestaña, Firebase entrega aquí el resultado.
+  // Al regresar de Facebook procesamos el resultado ANTES de dejar al usuario
+  // otra vez en la pantalla de acceso.
+  if (returningFromFacebook) {
+    loginInProgress = true;
+    setButtons(true);
+    status.textContent = 'Completando acceso con Facebook…';
+  }
+
   try {
     const redirectResult = await getRedirectResult(auth);
     if (redirectResult?.user) {
-      status.textContent = 'Acceso con Facebook correcto.';
+      showMainSite(redirectResult.user);
+      return;
     }
   } catch (e) {
     showError(e);
@@ -89,13 +134,15 @@ async function initAmericaAuth() {
     setButtons(true);
     status.textContent = 'Abriendo Google…';
     try {
-      await signInWithPopup(auth, googleProvider);
-      status.textContent = 'Acceso correcto.';
+      const result = await signInWithPopup(auth, googleProvider);
+      if (result?.user) showMainSite(result.user);
     } catch (e) {
       showError(e);
     } finally {
-      loginInProgress = false;
-      setButtons(false);
+      if (!auth.currentUser) {
+        loginInProgress = false;
+        setButtons(false);
+      }
     }
   };
 
@@ -104,10 +151,11 @@ async function initAmericaAuth() {
     loginInProgress = true;
     setButtons(true);
     status.textContent = 'Abriendo Facebook…';
+    sessionStorage.setItem(FB_REDIRECT_KEY, '1');
+    sessionStorage.removeItem(FB_RELOAD_KEY);
 
     try {
-      // Flujo tipo Spotify: todo ocurre en la misma pestaña.
-      // La página navega a Facebook y Firebase nos devuelve aquí al terminar.
+      // Misma pestaña: América es Tuya -> Facebook -> América es Tuya.
       await signInWithRedirect(auth, facebookProvider);
     } catch (e) {
       showError(e);
@@ -120,28 +168,29 @@ async function initAmericaAuth() {
 
   onAuthStateChanged(auth, user => {
     if (user) {
-      loginInProgress = false;
-      setButtons(false);
-      gate.style.display = 'none';
-      app.style.display = 'block';
-      userBox.hidden = false;
-      userName.textContent = user.displayName || user.email || 'Usuario';
-
-      if (user.photoURL) {
-        userPic.src = user.photoURL;
-        userPic.hidden = false;
-      } else {
-        userPic.hidden = true;
-      }
+      showMainSite(user);
     } else {
       gate.style.display = 'grid';
       app.style.display = 'none';
       userBox.hidden = true;
-      if (!loginInProgress) {
+
+      // Si acabamos de volver de Facebook, damos un momento a Firebase para
+      // publicar el estado autenticado antes de reactivar los botones.
+      if (returningFromFacebook) {
+        setTimeout(() => {
+          if (auth.currentUser) {
+            showMainSite(auth.currentUser);
+            return;
+          }
+          loginInProgress = false;
+          setButtons(false);
+          sessionStorage.removeItem(FB_REDIRECT_KEY);
+          sessionStorage.removeItem(FB_RELOAD_KEY);
+          status.textContent = 'Facebook regresó, pero Firebase no recibió la sesión. Intenta nuevamente.';
+        }, 2500);
+      } else if (!loginInProgress) {
         setButtons(false);
-        if (!status.textContent || status.textContent === 'Comprobando acceso…') {
-          status.textContent = 'Inicia sesión para entrar a América es Tuya.';
-        }
+        status.textContent = 'Inicia sesión para entrar a América es Tuya.';
       }
     }
   });
@@ -149,6 +198,8 @@ async function initAmericaAuth() {
 
 initAmericaAuth().catch(e => {
   console.error('Error inicializando Firebase Auth', e);
+  sessionStorage.removeItem(FB_REDIRECT_KEY);
+  sessionStorage.removeItem(FB_RELOAD_KEY);
   const status = document.getElementById('authStatus');
   if (status) status.textContent = 'No se pudo iniciar Firebase Authentication: ' + (e?.message || e);
 });
