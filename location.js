@@ -19,6 +19,10 @@
     if (accuracy != null) localStorage.setItem('americaestuya_location_accuracy', String(accuracy));
   };
 
+  const saveAddress = address => {
+    if (address) localStorage.setItem('americaestuya_location_address', address);
+  };
+
   const openMap = () => {
     const lat = Number(localStorage.getItem('americaestuya_location_lat'));
     const lon = Number(localStorage.getItem('americaestuya_location_lon'));
@@ -29,6 +33,14 @@
     const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lat + ',' + lon)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
+
+  async function reverseGeocode(lat, lon) {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1&accept-language=es`;
+    const r = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!r.ok) throw new Error('Reverse geocoding failed');
+    const j = await r.json();
+    return j.display_name || '';
+  }
 
   async function loadApproximateLocation() {
     setLabel('Ubicando…', 'Buscando ubicación aproximada');
@@ -53,12 +65,20 @@
     }
     setLabel('Buscando GPS…', 'Solicitando ubicación precisa');
     navigator.geolocation.getCurrentPosition(
-      pos => {
+      async pos => {
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
         const acc = Math.round(pos.coords.accuracy || 0);
-        setLabel('Ubicación exacta', `Ubicación precisa del dispositivo${acc ? ` · ±${acc} m` : ''}`);
         saveCoords(lat, lon, 'gps', acc);
+        setLabel('Buscando dirección…', `GPS recibido${acc ? ` · ±${acc} m` : ''}`);
+        try {
+          const address = await reverseGeocode(lat, lon);
+          if (!address) throw new Error('Address unavailable');
+          saveAddress(address);
+          setLabel(address, `Dirección obtenida por GPS${acc ? ` · ±${acc} m` : ''}`);
+        } catch (_) {
+          setLabel('Dirección no disponible', `GPS recibido${acc ? ` · ±${acc} m` : ''}. Puedes abrir el mapa.`);
+        }
       },
       () => loadApproximateLocation(),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
