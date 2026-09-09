@@ -26,7 +26,6 @@ async function initAmericaAuth() {
 
   const [{ initializeApp }, {
     getAuth, onAuthStateChanged, signInWithPopup,
-    signInWithRedirect, getRedirectResult,
     setPersistence, browserLocalPersistence,
     signOut, GoogleAuthProvider, FacebookAuthProvider
   }] = await Promise.all([
@@ -45,7 +44,6 @@ async function initAmericaAuth() {
   facebookProvider.addScope('email');
 
   let loginInProgress = false;
-  let processingRedirect = true;
 
   const setButtons = disabled => {
     if (googleBtn) googleBtn.disabled = disabled;
@@ -54,7 +52,6 @@ async function initAmericaAuth() {
 
   const showMainSite = user => {
     loginInProgress = false;
-    processingRedirect = false;
     setButtons(false);
     gate.style.display = 'none';
     app.style.display = 'block';
@@ -71,7 +68,6 @@ async function initAmericaAuth() {
 
   const showLogin = message => {
     loginInProgress = false;
-    processingRedirect = false;
     gate.style.display = 'grid';
     app.style.display = 'none';
     userBox.hidden = true;
@@ -89,30 +85,23 @@ async function initAmericaAuth() {
     } else if (code === 'auth/operation-not-allowed') {
       showLogin('Facebook no está habilitado correctamente en Firebase. (' + code + ')');
     } else if (code === 'auth/unauthorized-domain') {
-      showLogin('Falta autorizar iderguzl.github.io en Firebase. (' + code + ')');
+      showLogin('Este dominio no está autorizado en Firebase Authentication. (' + code + ')');
     } else if (code === 'auth/network-request-failed') {
       showLogin('Falló la conexión con Firebase. (' + code + ')');
+    } else if (code === 'auth/popup-blocked') {
+      showLogin('El navegador bloqueó la ventana de Facebook. Permite ventanas emergentes e inténtalo otra vez.');
+    } else if (code === 'auth/popup-closed-by-user') {
+      showLogin('Se cerró la ventana de Facebook antes de terminar el acceso.');
+    } else if (code === 'auth/cancelled-popup-request') {
+      showLogin('Ya había una ventana de acceso abierta. Inténtalo otra vez.');
     } else {
       showLogin('ERROR FACEBOOK: ' + code + (message ? ' — ' + message : ''));
     }
   };
 
-  // Procesamos primero cualquier regreso de Facebook. No forzamos recargas.
   status.textContent = 'Comprobando acceso…';
   setButtons(true);
 
-  try {
-    const redirectResult = await getRedirectResult(auth);
-    if (redirectResult?.user) {
-      showMainSite(redirectResult.user);
-      return;
-    }
-  } catch (e) {
-    showError(e);
-    return;
-  }
-
-  // Esperamos a que Firebase termine de restaurar una sesión persistida.
   if (typeof auth.authStateReady === 'function') {
     try {
       await auth.authStateReady();
@@ -121,11 +110,9 @@ async function initAmericaAuth() {
 
   if (auth.currentUser) {
     showMainSite(auth.currentUser);
-    return;
+  } else {
+    showLogin();
   }
-
-  processingRedirect = false;
-  showLogin();
 
   const loginGoogle = async () => {
     if (loginInProgress) return;
@@ -146,8 +133,12 @@ async function initAmericaAuth() {
     setButtons(true);
     status.textContent = 'Abriendo Facebook…';
     try {
-      // Flujo oficial de Firebase en la misma pestaña.
-      await signInWithRedirect(auth, facebookProvider);
+      const result = await signInWithPopup(auth, facebookProvider);
+      if (result?.user) {
+        showMainSite(result.user);
+      } else {
+        showLogin('Facebook regresó sin completar la sesión.');
+      }
     } catch (e) {
       showError(e);
     }
@@ -160,7 +151,7 @@ async function initAmericaAuth() {
   onAuthStateChanged(auth, user => {
     if (user) {
       showMainSite(user);
-    } else if (!processingRedirect && !loginInProgress) {
+    } else if (!loginInProgress) {
       showLogin();
     }
   });
