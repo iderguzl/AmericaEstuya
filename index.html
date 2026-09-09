@@ -73,7 +73,7 @@ iframe{display:block;width:100%;height:calc(100vh - 54px);border:0;background:wh
       <button id="logoutBtn" class="logout" type="button">Cerrar sesión</button>
     </div>
   </div>
-  <iframe id="siteFrame" src="site.html?v=20260909-real-pages2" title="América es Tuya"></iframe>
+  <iframe id="siteFrame" src="site.html?v=20260909-navfix1" title="América es Tuya"></iframe>
 </div>
 <script type="module" src="auth.js?v=20260909-session1"></script>
 <script src="location.js?v=20260909-3"></script>
@@ -90,8 +90,8 @@ iframe{display:block;width:100%;height:calc(100vh - 54px);border:0;background:wh
       if(!side)return;
 
       const protectedPages={
-        tasas:'pages/rates.html?v=20260909-1',
-        paises:'pages/countries.html?v=20260909-3',
+        tasas:'pages/rates.html?v=20260909-2',
+        paises:'pages/countries.html?v=20260909-4',
         lugares:'pages/places.html?v=20260909-2',
         info:'pages/info.html?v=20260909-2',
         curiosidades:'pages/curiosities.html?v=20260909-2',
@@ -99,23 +99,29 @@ iframe{display:block;width:100%;height:calc(100vh - 54px);border:0;background:wh
         proyecto:'pages/about.html?v=20260909-2'
       };
 
-      d.addEventListener('click',e=>{
+      const closeMenu=()=>side.classList.remove('open');
+
+      d.addEventListener('pointerup',e=>{
         const nav=e.target.closest('.nav');
         if(!nav)return;
+        closeMenu();
         const url=protectedPages[nav.dataset.v];
         if(!url)return;
         e.preventDefault();
         e.stopImmediatePropagation();
-        window.location.href=url;
+        window.location.assign(url);
       },true);
 
       d.addEventListener('pointerdown',e=>{
         if(!side.classList.contains('open'))return;
         if(side.contains(e.target))return;
         if(mob&&mob.contains(e.target))return;
-        side.classList.remove('open');
+        closeMenu();
       },true);
-      window.addEventListener('blur',()=>side.classList.remove('open'));
+
+      window.addEventListener('pageshow',closeMenu);
+      window.addEventListener('pagehide',closeMenu);
+      d.addEventListener('visibilitychange',()=>{if(d.hidden)closeMenu()});
     }catch(e){console.error('No se pudo configurar la aplicación interna',e)}
   });
 })();
