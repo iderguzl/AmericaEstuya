@@ -12,14 +12,19 @@
 h1{margin:4px 0 8px;font-size:34px}.sub{color:#5d7287;line-height:1.5;margin-bottom:22px}
 .auth-btn{width:100%;border:1px solid #d7e2ea;background:#fff;border-radius:14px;padding:14px 16px;margin:7px 0;font-size:16px;font-weight:700;cursor:pointer}
 .auth-btn:hover{background:#f5f9fc}.auth-btn:disabled{opacity:.55;cursor:not-allowed}.auth-status{min-height:22px;margin-top:12px;color:#6c7d8f;font-size:14px;overflow-wrap:anywhere}
+.auth-options{margin:8px 0 4px;border-top:1px solid #edf2f6;border-bottom:1px solid #edf2f6;padding:4px 0}
+.auth-choice{width:100%;border:0;background:transparent;display:flex;align-items:center;gap:14px;padding:15px 8px;margin:0;color:#173b5d;font-size:17px;font-weight:700;text-align:left;cursor:pointer;border-radius:12px}
+.auth-choice:hover,.auth-choice:focus-visible{background:#f3f8fc;outline:none}.auth-choice:disabled{opacity:.5;cursor:not-allowed}
+.auth-choice+.auth-choice{border-top:1px solid #edf2f6;border-radius:0}
+.auth-icon{width:32px;height:32px;display:grid;place-items:center;flex:0 0 32px}.auth-icon img{display:block;width:25px;height:25px}.guest-icon{border-radius:50%;background:#e8f3fb;font-size:19px;color:#0b74b8}.auth-arrow{margin-left:auto;color:#9aaebe;font-size:20px;font-weight:400}
 .connected-photo{width:96px;height:96px;border-radius:50%;object-fit:cover;margin:6px auto 14px;display:block;border:4px solid #e7f2fb}
 .connected-name{font-size:22px;font-weight:800;margin:4px 0 6px}.connected-ok{color:#2f6d4f;font-weight:700;margin-bottom:18px}
-.primary-enter{background:#0b74b8;color:#fff;border-color:#0b74b8}.secondary-logout{background:#f3f7fa;color:#123b63}.guest-enter{background:#eef8fc;color:#07539b;border-color:#b9ddeb}
+.primary-enter{background:#0b74b8;color:#fff;border-color:#0b74b8}.secondary-logout{background:#f3f7fa;color:#123b63}
 #siteApp{display:none;width:100%;height:100vh}.appbar{height:54px;background:#fff;border-bottom:1px solid #d8e7f3;display:flex;align-items:center;padding:0 12px;gap:7px}.appbar b{font-size:18px}.brand2{color:#08a6c7}
 .location-btn{margin-left:auto;display:flex;align-items:center;gap:5px;max-width:38%;border:0;background:#edf5fb;color:#123b63;border-radius:10px;padding:7px 9px;cursor:pointer;font-size:12px}.location-btn span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.location-pin{font-size:18px}.map-btn{border:0;background:#e7f4ff;color:#07539b;border-radius:10px;padding:7px 9px;cursor:pointer;font-size:18px;line-height:1}
 .userbox{display:flex;align-items:center;gap:8px;font-size:13px}.userbox img{width:32px;height:32px;border-radius:50%;object-fit:cover}.logout{display:none}
 iframe{display:block;width:100%;height:calc(100vh - 54px);border:0;background:white}
-@media(max-width:700px){.appbar b{font-size:15px}.location-btn{max-width:31%;padding:7px}.location-btn span:last-child{max-width:95px}.map-btn{padding:7px}.userbox span{display:none}}
+@media(max-width:700px){.appbar b{font-size:15px}.location-btn{max-width:31%;padding:7px}.location-btn span:last-child{max-width:95px}.map-btn{padding:7px}.userbox span{display:none}.auth-card{padding:28px 24px}}
 </style>
 </head>
 <body>
@@ -27,9 +32,17 @@ iframe{display:block;width:100%;height:calc(100vh - 54px);border:0;background:wh
   <div class="auth-card">
     <div class="auth-logo">🌎</div>
     <h1>América es Tuya</h1>
-    <p class="sub">Inicia sesión con Google o entra como invitado.</p>
-    <button id="googleLogin" class="auth-btn">Continuar con Google</button>
-    <button id="guestLogin" class="auth-btn guest-enter">Entrar como Invitado</button>
+    <p class="sub">Elige cómo quieres entrar</p>
+    <div class="auth-options">
+      <button id="googleLogin" class="auth-choice" type="button">
+        <span class="auth-icon"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"></span>
+        <span>Continuar con Google</span><span class="auth-arrow">›</span>
+      </button>
+      <button id="guestLogin" class="auth-choice" type="button">
+        <span class="auth-icon guest-icon">👤</span>
+        <span>Entrar como invitado</span><span class="auth-arrow">›</span>
+      </button>
+    </div>
     <button id="facebookLogin" class="auth-btn" hidden aria-hidden="true">Continuar con Facebook</button>
     <div id="authStatus" class="auth-status"></div>
   </div>
@@ -60,10 +73,31 @@ iframe{display:block;width:100%;height:calc(100vh - 54px);border:0;background:wh
       <button id="logoutBtn" class="logout" type="button">Cerrar sesión</button>
     </div>
   </div>
-  <iframe src="site.html?v=20260909-menu-logout2" title="América es Tuya"></iframe>
+  <iframe id="siteFrame" src="site.html?v=20260909-menu-focus1" title="América es Tuya"></iframe>
 </div>
 <script type="module" src="auth.js?v=20260909-guest1"></script>
 <script src="location.js?v=20260909-3"></script>
 <script src="countries.js?v=20260907-1"></script>
+<script>
+(function(){
+  const frame=document.getElementById('siteFrame');
+  if(!frame)return;
+  frame.addEventListener('load',()=>{
+    try{
+      const d=frame.contentDocument;
+      const side=d.getElementById('side');
+      const mob=d.getElementById('mob');
+      if(!side)return;
+      d.addEventListener('pointerdown',e=>{
+        if(!side.classList.contains('open'))return;
+        if(side.contains(e.target))return;
+        if(mob&&mob.contains(e.target))return;
+        side.classList.remove('open');
+      },true);
+      window.addEventListener('blur',()=>side.classList.remove('open'));
+    }catch(e){console.error('No se pudo configurar cierre automático del menú',e)}
+  });
+})();
+</script>
 </body>
 </html>
