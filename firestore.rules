@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Seguridad por defecto: nada queda público accidentalmente.
+    // Iremos abriendo únicamente las colecciones y operaciones necesarias.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
