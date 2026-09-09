@@ -12,8 +12,6 @@ const FIREBASE_CONFIG = {
   measurementId: "G-8K579LVLX1"
 };
 
-// Variable local preparada para reutilizar después.
-// En este hosting estático vive en el navegador, no en un servidor privado.
 const LOCAL_ACCESS_KEY = 'americaestuya_access_mode';
 const ACCESS_GUEST = 'guest';
 
@@ -52,13 +50,14 @@ async function initAmericaAuth() {
   const googleProvider = new GoogleAuthProvider();
   googleProvider.setCustomParameters({ prompt: 'select_account' });
 
-  // Facebook se conserva listo para reactivarlo después.
   const facebookProvider = new FacebookAuthProvider();
   facebookProvider.addScope('email');
 
   let loginInProgress = false;
   let connectedUser = null;
-  let guestMode = localStorage.getItem(LOCAL_ACCESS_KEY) === ACCESS_GUEST;
+  let guestMode = false;
+  let waitingForChoice = true;
+  localStorage.removeItem(LOCAL_ACCESS_KEY);
 
   const setButtons = disabled => {
     if (googleBtn) googleBtn.disabled = disabled;
@@ -71,9 +70,7 @@ async function initAmericaAuth() {
     const facebookData = providers.find(p => p?.providerId === 'facebook.com');
     if (facebookData?.photoURL) return facebookData.photoURL;
     if (user?.photoURL) return user.photoURL;
-    if (facebookData?.uid) {
-      return `https://graph.facebook.com/${encodeURIComponent(facebookData.uid)}/picture?type=large`;
-    }
+    if (facebookData?.uid) return `https://graph.facebook.com/${encodeURIComponent(facebookData.uid)}/picture?type=large`;
     return '';
   };
 
@@ -92,6 +89,7 @@ async function initAmericaAuth() {
   };
 
   const showConnected = user => {
+    waitingForChoice = false;
     guestMode = false;
     localStorage.removeItem(LOCAL_ACCESS_KEY);
     loginInProgress = false;
@@ -101,12 +99,12 @@ async function initAmericaAuth() {
     gate.style.display = 'none';
     app.style.display = 'none';
     connectedGate.style.display = 'grid';
-    const label = user.displayName || user.email || 'Usuario';
-    connectedName.textContent = label;
+    connectedName.textContent = user.displayName || user.email || 'Usuario';
     setProfileImage(connectedPic, user, 'grande');
   };
 
   const showMainSite = user => {
+    waitingForChoice = false;
     guestMode = false;
     localStorage.removeItem(LOCAL_ACCESS_KEY);
     loginInProgress = false;
@@ -122,6 +120,7 @@ async function initAmericaAuth() {
   };
 
   const showGuestSite = () => {
+    waitingForChoice = false;
     guestMode = true;
     connectedUser = null;
     localStorage.setItem(LOCAL_ACCESS_KEY, ACCESS_GUEST);
@@ -138,8 +137,11 @@ async function initAmericaAuth() {
   };
 
   const showLogin = message => {
+    waitingForChoice = true;
     loginInProgress = false;
     connectedUser = null;
+    guestMode = false;
+    localStorage.removeItem(LOCAL_ACCESS_KEY);
     gate.style.display = 'grid';
     connectedGate.style.display = 'none';
     app.style.display = 'none';
@@ -148,37 +150,19 @@ async function initAmericaAuth() {
     status.textContent = message || '';
   };
 
-  const leaveGuestMode = () => {
-    guestMode = false;
-    localStorage.removeItem(LOCAL_ACCESS_KEY);
-    showLogin();
-  };
+  const leaveGuestMode = () => showLogin();
 
   const showError = err => {
     console.error('AUTH ERROR', err);
     sessionStorage.removeItem('facebookRedirectPending');
     const code = err?.code || 'sin-codigo';
     const message = err?.message || '';
-    if (code === 'auth/account-exists-with-different-credential') {
-      showLogin('Ese correo ya está registrado con otro método de acceso. (' + code + ')');
-    } else if (code === 'auth/operation-not-allowed') {
-      showLogin('Facebook no está habilitado correctamente en Firebase. (' + code + ')');
-    } else if (code === 'auth/unauthorized-domain') {
-      showLogin('Este dominio no está autorizado en Firebase Authentication. (' + code + ')');
-    } else if (code === 'auth/network-request-failed') {
-      showLogin('Falló la conexión con Firebase. (' + code + ')');
-    } else {
-      showLogin('ERROR: ' + code + (message ? ' — ' + message : ''));
-    }
+    if (code === 'auth/account-exists-with-different-credential') showLogin('Ese correo ya está registrado con otro método de acceso. (' + code + ')');
+    else if (code === 'auth/operation-not-allowed') showLogin('Facebook no está habilitado correctamente en Firebase. (' + code + ')');
+    else if (code === 'auth/unauthorized-domain') showLogin('Este dominio no está autorizado en Firebase Authentication. (' + code + ')');
+    else if (code === 'auth/network-request-failed') showLogin('Falló la conexión con Firebase. (' + code + ')');
+    else showLogin('ERROR: ' + code + (message ? ' — ' + message : ''));
   };
-
-  // Si el navegador ya estaba en modo invitado, entra directamente.
-  if (guestMode) {
-    showGuestSite();
-    if (guestBtn) guestBtn.onclick = showGuestSite;
-    if (logoutBtn) logoutBtn.onclick = leaveGuestMode;
-    return;
-  }
 
   const returningFromFacebook = sessionStorage.getItem('facebookRedirectPending') === '1';
   if (status) status.textContent = returningFromFacebook ? 'Completando acceso…' : '';
@@ -199,9 +183,7 @@ async function initAmericaAuth() {
     try { await auth.authStateReady(); } catch (_) {}
   }
 
-  if (auth.currentUser) {
-    showConnected(auth.currentUser);
-  } else if (returningFromFacebook) {
+  if (returningFromFacebook) {
     sessionStorage.removeItem('facebookRedirectPending');
     showLogin('No se pudo confirmar la sesión.');
   } else {
@@ -210,6 +192,7 @@ async function initAmericaAuth() {
 
   const loginGoogle = async () => {
     if (loginInProgress) return;
+    waitingForChoice = false;
     loginInProgress = true;
     setButtons(true);
     status.textContent = 'Abriendo Google…';
@@ -219,9 +202,9 @@ async function initAmericaAuth() {
     } catch (e) { showError(e); }
   };
 
-  // Se conserva, pero el botón de Facebook está oculto en index.html.
   const loginFacebook = async () => {
     if (loginInProgress) return;
+    waitingForChoice = false;
     loginInProgress = true;
     setButtons(true);
     status.textContent = 'Abriendo Facebook…';
@@ -241,22 +224,26 @@ async function initAmericaAuth() {
     if (user) showMainSite(user);
     else showLogin();
   };
-  if (connectedLogoutBtn) connectedLogoutBtn.onclick = () => signOut(auth);
+  if (connectedLogoutBtn) connectedLogoutBtn.onclick = async () => {
+    await signOut(auth);
+    showLogin();
+  };
   if (logoutBtn) logoutBtn.onclick = async () => {
     if (guestMode) {
       leaveGuestMode();
       return;
     }
     await signOut(auth);
+    showLogin();
   };
 
   onAuthStateChanged(auth, user => {
-    if (guestMode) return;
+    if (waitingForChoice || guestMode) return;
     if (!user) {
       if (!loginInProgress && sessionStorage.getItem('facebookRedirectPending') !== '1') showLogin();
       return;
     }
-    if (app.style.display === 'block') return;
+    if (app.style.display === 'block' || connectedGate.style.display === 'grid') return;
     showConnected(user);
   });
 }
