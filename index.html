@@ -47,7 +47,7 @@ iframe{display:block;width:100%;height:calc(100vh - 54px);border:0;background:wh
     <button id="facebookLogin" class="auth-btn" hidden aria-hidden="true">Continuar con Facebook</button>
     <div id="authStatus" class="auth-status"></div>
   </div>
-  <div class="version">V 1.01</div>
+  <div class="version">V 2.0.1</div>
 </div>
 
 <div id="connectedGate" class="auth-gate" style="display:none">
@@ -75,9 +75,9 @@ iframe{display:block;width:100%;height:calc(100vh - 54px);border:0;background:wh
       <button id="logoutBtn" class="logout" type="button">Cerrar sesión</button>
     </div>
   </div>
-  <iframe id="siteFrame" src="site.html?v=20260909-v101" title="América es Tuya"></iframe>
+  <iframe id="siteFrame" src="site.html?v=20260909-v201" title="América es Tuya"></iframe>
 </div>
-<script type="module" src="auth.js?v=20260909-v101"></script>
+<script type="module" src="auth.js?v=20260909-v201"></script>
 <script src="location.js?v=20260909-3"></script>
 <script>
 (function(){
@@ -91,13 +91,13 @@ iframe{display:block;width:100%;height:calc(100vh - 54px);border:0;background:wh
       if(!side)return;
 
       const protectedPages={
-        tasas:'pages/rates.html?v=20260909-v101',
-        paises:'pages/countries.html?v=20260909-v101',
-        lugares:'pages/places.html?v=20260909-v101',
-        info:'pages/info.html?v=20260909-v101',
-        curiosidades:'pages/curiosities.html?v=20260909-v101',
-        noticias:'pages/news.html?v=20260909-v101',
-        proyecto:'pages/about.html?v=20260909-v101'
+        tasas:'pages/rates.html?v=20260909-v201',
+        paises:'pages/countries.html?v=20260909-v201',
+        lugares:'pages/places.html?v=20260909-v201',
+        info:'pages/info.html?v=20260909-v201',
+        curiosidades:'pages/curiosities.html?v=20260909-v201',
+        noticias:'pages/news.html?v=20260909-v201',
+        proyecto:'pages/about.html?v=20260909-v201'
       };
 
       const closeMenu=()=>side.classList.remove('open');
