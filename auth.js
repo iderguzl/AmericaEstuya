@@ -14,6 +14,7 @@ const FIREBASE_CONFIG = {
 
 const LOCAL_ACCESS_KEY = 'americaestuya_access_mode';
 const ACCESS_GUEST = 'guest';
+const SESSION_ACCESS_KEY = 'americaestuya_session_access';
 
 async function initAmericaAuth() {
   const gate = document.getElementById('authGate');
@@ -58,6 +59,7 @@ async function initAmericaAuth() {
   let guestMode = false;
   let waitingForChoice = true;
   localStorage.removeItem(LOCAL_ACCESS_KEY);
+  sessionStorage.removeItem(SESSION_ACCESS_KEY);
 
   const setButtons = disabled => {
     if (googleBtn) googleBtn.disabled = disabled;
@@ -107,6 +109,7 @@ async function initAmericaAuth() {
     waitingForChoice = false;
     guestMode = false;
     localStorage.removeItem(LOCAL_ACCESS_KEY);
+    sessionStorage.setItem(SESSION_ACCESS_KEY, 'google');
     loginInProgress = false;
     connectedUser = user;
     sessionStorage.removeItem('facebookRedirectPending');
@@ -124,6 +127,7 @@ async function initAmericaAuth() {
     guestMode = true;
     connectedUser = null;
     localStorage.setItem(LOCAL_ACCESS_KEY, ACCESS_GUEST);
+    sessionStorage.setItem(SESSION_ACCESS_KEY, 'guest');
     sessionStorage.removeItem('facebookRedirectPending');
     gate.style.display = 'none';
     connectedGate.style.display = 'none';
@@ -142,6 +146,7 @@ async function initAmericaAuth() {
     connectedUser = null;
     guestMode = false;
     localStorage.removeItem(LOCAL_ACCESS_KEY);
+    sessionStorage.removeItem(SESSION_ACCESS_KEY);
     gate.style.display = 'grid';
     connectedGate.style.display = 'none';
     app.style.display = 'none';
