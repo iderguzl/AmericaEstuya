@@ -12,12 +12,18 @@ const FIREBASE_CONFIG = {
   measurementId: "G-8K579LVLX1"
 };
 
+// Variable local preparada para reutilizar después.
+// En este hosting estático vive en el navegador, no en un servidor privado.
+const LOCAL_ACCESS_KEY = 'americaestuya_access_mode';
+const ACCESS_GUEST = 'guest';
+
 async function initAmericaAuth() {
   const gate = document.getElementById('authGate');
   const connectedGate = document.getElementById('connectedGate');
   const app = document.getElementById('siteApp');
   const status = document.getElementById('authStatus');
   const googleBtn = document.getElementById('googleLogin');
+  const guestBtn = document.getElementById('guestLogin');
   const facebookBtn = document.getElementById('facebookLogin');
   const enterBtn = document.getElementById('enterSiteBtn');
   const connectedLogoutBtn = document.getElementById('connectedLogoutBtn');
@@ -46,14 +52,17 @@ async function initAmericaAuth() {
   const googleProvider = new GoogleAuthProvider();
   googleProvider.setCustomParameters({ prompt: 'select_account' });
 
+  // Facebook se conserva listo para reactivarlo después.
   const facebookProvider = new FacebookAuthProvider();
   facebookProvider.addScope('email');
 
   let loginInProgress = false;
   let connectedUser = null;
+  let guestMode = localStorage.getItem(LOCAL_ACCESS_KEY) === ACCESS_GUEST;
 
   const setButtons = disabled => {
     if (googleBtn) googleBtn.disabled = disabled;
+    if (guestBtn) guestBtn.disabled = disabled;
     if (facebookBtn) facebookBtn.disabled = disabled;
   };
 
@@ -74,10 +83,7 @@ async function initAmericaAuth() {
     if (photo) {
       img.hidden = false;
       img.alt = user.displayName ? `Foto de ${user.displayName}` : `Foto de perfil ${sizeLabel || ''}`;
-      img.onerror = () => {
-        img.onerror = null;
-        img.hidden = true;
-      };
+      img.onerror = () => { img.onerror = null; img.hidden = true; };
       img.src = photo;
     } else {
       img.removeAttribute('src');
@@ -86,6 +92,8 @@ async function initAmericaAuth() {
   };
 
   const showConnected = user => {
+    guestMode = false;
+    localStorage.removeItem(LOCAL_ACCESS_KEY);
     loginInProgress = false;
     connectedUser = user;
     sessionStorage.removeItem('facebookRedirectPending');
@@ -99,6 +107,8 @@ async function initAmericaAuth() {
   };
 
   const showMainSite = user => {
+    guestMode = false;
+    localStorage.removeItem(LOCAL_ACCESS_KEY);
     loginInProgress = false;
     connectedUser = user;
     sessionStorage.removeItem('facebookRedirectPending');
@@ -111,6 +121,22 @@ async function initAmericaAuth() {
     setProfileImage(userPic, user, 'pequeña');
   };
 
+  const showGuestSite = () => {
+    guestMode = true;
+    connectedUser = null;
+    localStorage.setItem(LOCAL_ACCESS_KEY, ACCESS_GUEST);
+    sessionStorage.removeItem('facebookRedirectPending');
+    gate.style.display = 'none';
+    connectedGate.style.display = 'none';
+    app.style.display = 'block';
+    userBox.hidden = false;
+    if (userPic) {
+      userPic.removeAttribute('src');
+      userPic.hidden = true;
+    }
+    userName.textContent = 'Invitado';
+  };
+
   const showLogin = message => {
     loginInProgress = false;
     connectedUser = null;
@@ -119,7 +145,13 @@ async function initAmericaAuth() {
     app.style.display = 'none';
     userBox.hidden = true;
     setButtons(false);
-    status.textContent = message || 'Inicia sesión para entrar a América es Tuya.';
+    status.textContent = message || '';
+  };
+
+  const leaveGuestMode = () => {
+    guestMode = false;
+    localStorage.removeItem(LOCAL_ACCESS_KEY);
+    showLogin();
   };
 
   const showError = err => {
@@ -136,12 +168,20 @@ async function initAmericaAuth() {
     } else if (code === 'auth/network-request-failed') {
       showLogin('Falló la conexión con Firebase. (' + code + ')');
     } else {
-      showLogin('ERROR FACEBOOK: ' + code + (message ? ' — ' + message : ''));
+      showLogin('ERROR: ' + code + (message ? ' — ' + message : ''));
     }
   };
 
+  // Si el navegador ya estaba en modo invitado, entra directamente.
+  if (guestMode) {
+    showGuestSite();
+    if (guestBtn) guestBtn.onclick = showGuestSite;
+    if (logoutBtn) logoutBtn.onclick = leaveGuestMode;
+    return;
+  }
+
   const returningFromFacebook = sessionStorage.getItem('facebookRedirectPending') === '1';
-  status.textContent = returningFromFacebook ? 'Completando acceso con Facebook…' : 'Comprobando acceso…';
+  if (status) status.textContent = returningFromFacebook ? 'Completando acceso…' : '';
   setButtons(true);
 
   try {
@@ -163,7 +203,7 @@ async function initAmericaAuth() {
     showConnected(auth.currentUser);
   } else if (returningFromFacebook) {
     sessionStorage.removeItem('facebookRedirectPending');
-    showLogin('Facebook regresó, pero Firebase no confirmó la sesión.');
+    showLogin('No se pudo confirmar la sesión.');
   } else {
     showLogin();
   }
@@ -179,6 +219,7 @@ async function initAmericaAuth() {
     } catch (e) { showError(e); }
   };
 
+  // Se conserva, pero el botón de Facebook está oculto en index.html.
   const loginFacebook = async () => {
     if (loginInProgress) return;
     loginInProgress = true;
@@ -193,6 +234,7 @@ async function initAmericaAuth() {
   };
 
   if (googleBtn) googleBtn.onclick = loginGoogle;
+  if (guestBtn) guestBtn.onclick = showGuestSite;
   if (facebookBtn) facebookBtn.onclick = loginFacebook;
   if (enterBtn) enterBtn.onclick = () => {
     const user = connectedUser || auth.currentUser;
@@ -200,9 +242,16 @@ async function initAmericaAuth() {
     else showLogin();
   };
   if (connectedLogoutBtn) connectedLogoutBtn.onclick = () => signOut(auth);
-  if (logoutBtn) logoutBtn.onclick = () => signOut(auth);
+  if (logoutBtn) logoutBtn.onclick = async () => {
+    if (guestMode) {
+      leaveGuestMode();
+      return;
+    }
+    await signOut(auth);
+  };
 
   onAuthStateChanged(auth, user => {
+    if (guestMode) return;
     if (!user) {
       if (!loginInProgress && sessionStorage.getItem('facebookRedirectPending') !== '1') showLogin();
       return;
