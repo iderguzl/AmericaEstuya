@@ -6,11 +6,81 @@
 <title>Gestión · América es Tuya</title>
 <script src="../js/access-guard.js" data-access="authenticated"></script>
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f9fd;color:#123b63}.topbar{height:64px;background:#fff;border-bottom:1px solid #d8e7f3;display:flex;align-items:center;padding:0 16px;gap:12px}.back{border:0;background:#eaf5fc;color:#07589b;border-radius:10px;width:42px;height:42px;font-size:25px;display:grid;place-items:center;cursor:pointer}.brand{font-size:20px;font-weight:900}.brand span{color:#08a6c7}.wrap{padding:28px}.card{max-width:760px;background:#fff;border:1px solid #dbe8f2;border-radius:22px;padding:28px;box-shadow:0 12px 30px #0a568b14}.card h1{margin:0 0 10px;font-family:Georgia,serif;font-size:42px}.card p{line-height:1.6;color:#526f87}.badge{display:inline-block;background:#eaf5fc;color:#07589b;border-radius:999px;padding:8px 12px;font-weight:700;margin-top:8px}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f9fd;color:#123b63}.topbar{height:64px;background:#fff;border-bottom:1px solid #d8e7f3;display:flex;align-items:center;padding:0 16px;gap:12px;position:sticky;top:0;z-index:5}.back{border:0;background:#eaf5fc;color:#07589b;border-radius:10px;width:42px;height:42px;font-size:25px;display:grid;place-items:center;cursor:pointer}.brand{font-size:20px;font-weight:900}.brand span{color:#08a6c7}.layout{display:grid;grid-template-columns:230px 1fr;min-height:calc(100vh - 64px)}.menu{background:linear-gradient(#0c579e,#082e57);padding:20px 12px;color:#fff}.menu h3{margin:0 10px 14px}.menu button{width:100%;border:0;background:transparent;color:#dceeff;text-align:left;padding:13px 14px;border-radius:11px;font-size:16px;margin:3px 0;cursor:pointer}.menu button.active,.menu button:hover{background:#1688df;color:#fff}.wrap{padding:28px}.card{max-width:780px;background:#fff;border:1px solid #dbe8f2;border-radius:22px;padding:28px;box-shadow:0 12px 30px #0a568b14}.card h1{margin:0 0 6px;font-family:Georgia,serif;font-size:42px}.sub{color:#60798f;margin:0 0 22px}.status{padding:12px 14px;border-radius:12px;background:#eef6fc;margin-bottom:18px;color:#456b8d}.status.error{background:#fff0f0;color:#9a2d2d}.details{display:grid;grid-template-columns:190px 1fr;border:1px solid #e2edf5;border-radius:16px;overflow:hidden}.details div{padding:13px 15px;border-bottom:1px solid #e8f0f6}.details div:nth-last-child(-n+2){border-bottom:0}.label{font-weight:800;background:#f5f9fc}.value{overflow-wrap:anywhere}.active{color:#237a4b;font-weight:800}.future{display:none}.badge{display:inline-block;background:#eaf5fc;color:#07589b;border-radius:999px;padding:8px 12px;font-weight:700;margin-top:8px}@media(max-width:700px){.layout{display:block}.menu{display:flex;overflow:auto;padding:9px}.menu h3{display:none}.menu button{white-space:nowrap;width:auto}.wrap{padding:16px}.card{padding:20px}.card h1{font-size:34px}.details{grid-template-columns:1fr}.details .label{border-bottom:0;padding-bottom:4px}.details .value{padding-top:4px}.details div:nth-last-child(-n+2){border-bottom:1px solid #e8f0f6}.details div:last-child{border-bottom:0}}
 </style>
 </head>
 <body>
-<header class="topbar"><button class="back" type="button" aria-label="Volver" onclick="history.back()">←</button><div class="brand">🌎 América <span>es Tuya</span></div></header>
-<main class="wrap"><section class="card"><h1>Gestión</h1><p>Esta será el área de trabajo conectada a la base de datos. Aquí iremos agregando las opciones de clientes, usuarios, trabajadores, trabajos y demás funciones de gestión.</p><span class="badge">En construcción</span></section></main>
+<header class="topbar"><button class="back" type="button" aria-label="Volver" onclick="history.back()">←</button><div class="brand">🌎 América <span>es Tuya</span> · Gestión</div></header>
+<div class="layout">
+  <aside class="menu">
+    <h3>Gestión</h3>
+    <button class="active" data-section="account">👤 Mi Cuenta</button>
+    <button data-section="clients">👥 Clientes</button>
+    <button data-section="configuration">⚙ Configuración</button>
+  </aside>
+  <main class="wrap">
+    <section id="account" class="card">
+      <h1>Mi Cuenta</h1>
+      <p class="sub">Datos guardados en la tabla ACCOUNTS.</p>
+      <div id="accountStatus" class="status">Cargando cuenta…</div>
+      <div id="accountDetails" class="details" hidden>
+        <div class="label">ID de cuenta</div><div id="accountId" class="value"></div>
+        <div class="label">Nombre</div><div id="displayName" class="value"></div>
+        <div class="label">Correo</div><div id="email" class="value"></div>
+        <div class="label">Fecha de creación</div><div id="createdAt" class="value"></div>
+        <div class="label">Último acceso</div><div id="lastLoginAt" class="value"></div>
+        <div class="label">Estado</div><div id="isActive" class="value"></div>
+      </div>
+    </section>
+    <section id="clients" class="card future"><h1>Clientes</h1><p>Esta será la siguiente sección conectada a la tabla CLIENTS.</p><span class="badge">En construcción</span></section>
+    <section id="configuration" class="card future"><h1>Configuración</h1><p>Configuración propia de esta cuenta.</p><span class="badge">En construcción</span></section>
+  </main>
+</div>
+<script type="module">
+const FIREBASE_CONFIG={apiKey:'AIzaSyCanpMR3uSiZAecwLYG9nWiXvaksJncX0U',authDomain:'americaestuya.firebaseapp.com',projectId:'americaestuya',storageBucket:'americaestuya.firebasestorage.app',messagingSenderId:'1071710933035',appId:'1:1071710933035:web:2443a0ec9f1405fcc61a6e',measurementId:'G-8K579LVLX1'};
+const DATA_API_URL='https://ep-muddy-fire-awvetyx3.apirest.c-12.us-east-1.aws.neon.tech/americaestuya/rest/v1';
+const status=document.getElementById('accountStatus');
+const details=document.getElementById('accountDetails');
+const fmt=v=>v?new Intl.DateTimeFormat('es-US',{dateStyle:'medium',timeStyle:'short'}).format(new Date(v)):'—';
+
+document.querySelectorAll('.menu button').forEach(btn=>btn.addEventListener('click',()=>{
+  document.querySelectorAll('.menu button').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('main section').forEach(x=>x.style.display='none');
+  document.getElementById(btn.dataset.section).style.display='block';
+}));
+
+async function loadAccount(){
+  try{
+    const [{initializeApp,getApps,getApp},{getAuth,onAuthStateChanged}]=await Promise.all([
+      import('https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js')
+    ]);
+    const app=getApps().length?getApp():initializeApp(FIREBASE_CONFIG);
+    const auth=getAuth(app);
+    onAuthStateChanged(auth,async user=>{
+      if(!user){status.textContent='No hay una sesión de Google activa.';status.classList.add('error');return;}
+      try{
+        const token=await user.getIdToken();
+        const r=await fetch(`${DATA_API_URL}/accounts?select=account_id,email,display_name,created_at,last_login_at,is_active&auth_uid=eq.${encodeURIComponent(user.uid)}`,{headers:{Authorization:`Bearer ${token}`}});
+        if(!r.ok)throw new Error(await r.text());
+        const rows=await r.json();
+        const a=rows[0];
+        if(!a){status.textContent='La cuenta todavía no aparece en ACCOUNTS. Sal y vuelve a entrar con Google para sincronizarla.';status.classList.add('error');return;}
+        document.getElementById('accountId').textContent=a.account_id;
+        document.getElementById('displayName').textContent=a.display_name||'—';
+        document.getElementById('email').textContent=a.email||'—';
+        document.getElementById('createdAt').textContent=fmt(a.created_at);
+        document.getElementById('lastLoginAt').textContent=fmt(a.last_login_at);
+        document.getElementById('isActive').textContent=a.is_active?'Activo':'Inactivo';
+        document.getElementById('isActive').className='value '+(a.is_active?'active':'');
+        status.textContent='Cuenta cargada desde Neon.';
+        details.hidden=false;
+      }catch(e){console.error(e);status.textContent='No se pudo leer ACCOUNTS: '+(e.message||e);status.classList.add('error');}
+    });
+  }catch(e){console.error(e);status.textContent='No se pudo iniciar la conexión con Firebase.';status.classList.add('error');}
+}
+loadAccount();
+</script>
 </body>
 </html>
