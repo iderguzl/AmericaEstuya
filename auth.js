@@ -15,6 +15,7 @@ const FIREBASE_CONFIG = {
 const LOCAL_ACCESS_KEY = 'americaestuya_access_mode';
 const ACCESS_GUEST = 'guest';
 const SESSION_ACCESS_KEY = 'americaestuya_session_access';
+const RESUME_MAIN_KEY = 'americaestuya_resume_main';
 
 async function initAmericaAuth() {
   const gate = document.getElementById('authGate');
@@ -110,6 +111,7 @@ async function initAmericaAuth() {
     guestMode = false;
     localStorage.removeItem(LOCAL_ACCESS_KEY);
     sessionStorage.setItem(SESSION_ACCESS_KEY, 'google');
+    sessionStorage.removeItem(RESUME_MAIN_KEY);
     loginInProgress = false;
     connectedUser = user;
     sessionStorage.removeItem('facebookRedirectPending');
@@ -118,6 +120,7 @@ async function initAmericaAuth() {
     connectedGate.style.display = 'none';
     app.style.display = 'block';
     userBox.hidden = false;
+    if (status) status.textContent = '';
     userName.textContent = 'Conectado como ' + (user.displayName || user.email || 'Usuario');
     setProfileImage(userPic, user, 'pequeña');
   };
@@ -128,11 +131,13 @@ async function initAmericaAuth() {
     connectedUser = null;
     localStorage.setItem(LOCAL_ACCESS_KEY, ACCESS_GUEST);
     sessionStorage.setItem(SESSION_ACCESS_KEY, 'guest');
+    sessionStorage.removeItem(RESUME_MAIN_KEY);
     sessionStorage.removeItem('facebookRedirectPending');
     gate.style.display = 'none';
     connectedGate.style.display = 'none';
     app.style.display = 'block';
     userBox.hidden = false;
+    if (status) status.textContent = '';
     if (userPic) {
       userPic.removeAttribute('src');
       userPic.hidden = true;
@@ -170,6 +175,7 @@ async function initAmericaAuth() {
   };
 
   const returningFromFacebook = sessionStorage.getItem('facebookRedirectPending') === '1';
+  const returningFromManagement = sessionStorage.getItem(RESUME_MAIN_KEY) === '1';
   if (status) status.textContent = returningFromFacebook ? 'Completando acceso…' : '';
   setButtons(true);
 
@@ -187,6 +193,12 @@ async function initAmericaAuth() {
   if (typeof auth.authStateReady === 'function') {
     try { await auth.authStateReady(); } catch (_) {}
   }
+
+  if (returningFromManagement && auth.currentUser) {
+    showMainSite(auth.currentUser);
+    return;
+  }
+  if (returningFromManagement) sessionStorage.removeItem(RESUME_MAIN_KEY);
 
   if (returningFromFacebook) {
     sessionStorage.removeItem('facebookRedirectPending');
@@ -230,10 +242,12 @@ async function initAmericaAuth() {
     else showLogin();
   };
   if (connectedLogoutBtn) connectedLogoutBtn.onclick = async () => {
+    sessionStorage.removeItem(RESUME_MAIN_KEY);
     await signOut(auth);
     showLogin();
   };
   if (logoutBtn) logoutBtn.onclick = async () => {
+    sessionStorage.removeItem(RESUME_MAIN_KEY);
     if (guestMode) {
       leaveGuestMode();
       return;
