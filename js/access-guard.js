@@ -19,16 +19,14 @@
         if (backButton) {
           backButton.onclick = () => {
             sessionStorage.setItem(RESUME_MAIN_KEY, '1');
-            window.location.replace('../index.html');
+            window.location.replace('../index.html?resume=management');
           };
         }
 
-        // La pantalla de Gestión ya carga este guard; aprovechamos ese punto
-        // para añadir el módulo de Configuración sin duplicar lógica en el HTML.
         if (!document.querySelector('script[data-management-config]')) {
           const script = document.createElement('script');
           script.type = 'module';
-          script.src = '../js/management-config.js?v=20260913-1';
+          script.src = '../js/management-config.js?v=20260913-2';
           script.dataset.managementConfig = '1';
           document.body.appendChild(script);
         }
