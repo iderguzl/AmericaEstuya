@@ -12,6 +12,7 @@ const FIREBASE_CONFIG = {
 };
 
 const DATA_API_URL = 'https://ep-muddy-fire-awvetyx3.apirest.c-12.us-east-1.aws.neon.tech/americaestuya/rest/v1';
+const RESUME_MAIN_KEY = 'americaestuya_resume_main';
 
 let currentToken = '';
 let currentAccount = null;
@@ -21,8 +22,8 @@ let userSortAsc = true;
 let initialized = false;
 
 const $ = id => document.getElementById(id);
-const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, ch => ({
-  '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+const escapeHtml = value => String(value ?? '').replace(/[&<>'\"]/g, ch => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '\"': '&quot;'
 }[ch]));
 
 function makeBigintId() {
@@ -37,6 +38,24 @@ function setUserMessage(message, type = '') {
   if (!el) return;
   el.textContent = message || '';
   el.className = 'status' + (type ? ' ' + type : '');
+}
+
+function clearTransientMessages() {
+  document.querySelectorAll('.status').forEach(el => {
+    el.textContent = '';
+    el.className = 'status';
+  });
+}
+
+function configureBackButton() {
+  const back = document.querySelector('.back');
+  if (!back) return;
+  back.removeAttribute('onclick');
+  back.addEventListener('click', event => {
+    event.preventDefault();
+    sessionStorage.setItem(RESUME_MAIN_KEY, '1');
+    window.location.replace('../');
+  });
 }
 
 function injectUsersUI() {
@@ -111,6 +130,7 @@ function resetUserForm() {
 
 function openUserForm(user = null) {
   resetUserForm();
+  setUserMessage('');
   if (user) {
     $('userId').value = user.user_id;
     $('userName').value = user.name || '';
@@ -125,6 +145,7 @@ function openUserForm(user = null) {
 function closeUserForm() {
   $('userForm').classList.remove('open');
   resetUserForm();
+  setUserMessage('');
 }
 
 function visibleUsers() {
@@ -173,6 +194,7 @@ function renderUsers() {
   list.querySelectorAll('.client-row').forEach(row => {
     const select = () => {
       selectedUserId = row.dataset.id;
+      setUserMessage('');
       renderUsers();
     };
     row.addEventListener('click', select);
@@ -185,6 +207,31 @@ function renderUsers() {
   });
 }
 
+async function waitForFirebaseUser(auth) {
+  if (typeof auth.authStateReady === 'function') {
+    try { await auth.authStateReady(); } catch (_) {}
+  }
+  if (auth.currentUser) return auth.currentUser;
+
+  const { onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js');
+  return await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      unsubscribe();
+      reject(new Error('No hay una sesión activa.'));
+    }, 8000);
+    const unsubscribe = onAuthStateChanged(auth, user => {
+      if (!user) return;
+      clearTimeout(timer);
+      unsubscribe();
+      resolve(user);
+    }, error => {
+      clearTimeout(timer);
+      unsubscribe();
+      reject(error);
+    });
+  });
+}
+
 async function getSession() {
   const [{ initializeApp, getApps, getApp }, { getAuth }] = await Promise.all([
     import('https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js'),
@@ -193,8 +240,7 @@ async function getSession() {
 
   const app = getApps().length ? getApp() : initializeApp(FIREBASE_CONFIG);
   const auth = getAuth(app);
-  const user = auth.currentUser;
-  if (!user) throw new Error('No hay una sesión activa.');
+  const user = await waitForFirebaseUser(auth);
 
   currentToken = await user.getIdToken();
   const response = await fetch(
@@ -208,6 +254,7 @@ async function getSession() {
 }
 
 async function loadUsers() {
+  setUserMessage('');
   if (!currentToken || !currentAccount) {
     await getSession();
   }
@@ -233,6 +280,7 @@ function selectedUser() {
 
 async function saveUser(event) {
   event.preventDefault();
+  setUserMessage('');
   if (!currentToken || !currentAccount) await getSession();
 
   const id = $('userId').value;
@@ -288,7 +336,9 @@ async function softDeleteUser() {
   }
   if (!confirm(`¿Eliminar ${user.name}?`)) return;
 
+  setUserMessage('');
   try {
+    if (!currentToken || !currentAccount) await getSession();
     const response = await fetch(
       `${DATA_API_URL}/users?user_id=eq.${encodeURIComponent(user.user_id)}&account_id=eq.${currentAccount.account_id}`,
       {
@@ -331,6 +381,7 @@ function exportUsers() {
 }
 
 function handleUserTool(action, button) {
+  setUserMessage('');
   if (action === 'new') {
     selectedUserId = null;
     renderUsers();
@@ -404,12 +455,23 @@ async function initUsersManagement() {
   if (initialized) return;
   initialized = true;
   injectUsersUI();
+  configureBackButton();
+  clearTransientMessages();
   wireUsersToolbar();
 
   $('cancelUserBtn')?.addEventListener('click', closeUserForm);
   $('userForm')?.addEventListener('submit', saveUser);
   $('userSearchText')?.addEventListener('input', renderUsers);
   $('userFilter')?.addEventListener('change', renderUsers);
+
+  window.addEventListener('pageshow', event => {
+    clearTransientMessages();
+    if (event.persisted) {
+      currentToken = '';
+      currentAccount = null;
+      loadUsers().catch(error => console.error(error));
+    }
+  });
 
   try {
     await getSession();
