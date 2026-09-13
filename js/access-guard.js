@@ -11,7 +11,21 @@
     ? access === 'google'
     : access === 'google' || access === 'guest';
 
-  if (allowed) return;
+  if (allowed) {
+    // En páginas autenticadas, el botón Volver debe regresar a la aplicación
+    // y no depender del historial del navegador, que puede llevar al login.
+    if (required === 'authenticated') {
+      window.addEventListener('DOMContentLoaded', () => {
+        const backButton = document.querySelector('.back');
+        if (backButton) {
+          backButton.onclick = () => {
+            window.location.href = '../site.html';
+          };
+        }
+      });
+    }
+    return;
+  }
 
   const guestBlocked = required === 'authenticated' && access === 'guest';
   const message = guestBlocked
