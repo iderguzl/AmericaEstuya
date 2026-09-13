@@ -4,6 +4,7 @@
 // La seguridad real de los datos debe reforzarse además con Firebase/Firestore Rules.
 (function () {
   const ACCESS_KEY = 'americaestuya_session_access';
+  const RESUME_MAIN_KEY = 'americaestuya_resume_main';
   const access = sessionStorage.getItem(ACCESS_KEY);
   const required = document.currentScript?.dataset?.access || 'any';
 
@@ -12,15 +13,24 @@
     : access === 'google' || access === 'guest';
 
   if (allowed) {
-    // En páginas autenticadas, el botón Volver debe regresar a la aplicación
-    // y no depender del historial del navegador, que puede llevar al login.
     if (required === 'authenticated') {
       window.addEventListener('DOMContentLoaded', () => {
         const backButton = document.querySelector('.back');
         if (backButton) {
           backButton.onclick = () => {
-            window.location.href = '../site.html';
+            sessionStorage.setItem(RESUME_MAIN_KEY, '1');
+            window.location.replace('../index.html');
           };
+        }
+
+        // La pantalla de Gestión ya carga este guard; aprovechamos ese punto
+        // para añadir el módulo de Configuración sin duplicar lógica en el HTML.
+        if (!document.querySelector('script[data-management-config]')) {
+          const script = document.createElement('script');
+          script.type = 'module';
+          script.src = '../js/management-config.js?v=20260913-1';
+          script.dataset.managementConfig = '1';
+          document.body.appendChild(script);
         }
       });
     }
