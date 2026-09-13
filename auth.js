@@ -35,6 +35,13 @@ async function initAmericaAuth() {
   const connectedName = document.getElementById('connectedName');
   if (!gate || !connectedGate || !app) return;
 
+  const returningFromManagementEarly = sessionStorage.getItem(RESUME_MAIN_KEY) === '1';
+  if (returningFromManagementEarly) {
+    gate.style.display = 'none';
+    connectedGate.style.display = 'none';
+    app.style.display = 'block';
+  }
+
   const [{ initializeApp }, {
     getAuth, onAuthStateChanged, signInWithPopup,
     signInWithRedirect, getRedirectResult,
@@ -60,6 +67,7 @@ async function initAmericaAuth() {
   let guestMode = false;
   let waitingForChoice = true;
 
+  const finishResumeVisual = () => document.documentElement.classList.remove('resume-app');
   const setButtons = disabled => {
     if (googleBtn) googleBtn.disabled = disabled;
     if (guestBtn) guestBtn.disabled = disabled;
@@ -90,6 +98,7 @@ async function initAmericaAuth() {
   };
 
   const showConnected = user => {
+    finishResumeVisual();
     waitingForChoice = false;
     guestMode = false;
     localStorage.removeItem(LOCAL_ACCESS_KEY);
@@ -105,6 +114,7 @@ async function initAmericaAuth() {
   };
 
   const showMainSite = user => {
+    finishResumeVisual();
     waitingForChoice = false;
     guestMode = false;
     localStorage.removeItem(LOCAL_ACCESS_KEY);
@@ -124,6 +134,7 @@ async function initAmericaAuth() {
   };
 
   const showGuestSite = () => {
+    finishResumeVisual();
     waitingForChoice = false;
     guestMode = true;
     connectedUser = null;
@@ -144,6 +155,7 @@ async function initAmericaAuth() {
   };
 
   const showLogin = message => {
+    finishResumeVisual();
     waitingForChoice = true;
     loginInProgress = false;
     connectedUser = null;
@@ -194,8 +206,6 @@ async function initAmericaAuth() {
     try { await auth.authStateReady(); } catch (_) {}
   }
 
-  // Si venimos de Gestión (flecha web o botón Atrás del teléfono),
-  // la sesión de Firebase sigue siendo válida y se recupera Inicio directamente.
   if ((returningFromManagement || rememberedAuthenticatedSession) && auth.currentUser) {
     showMainSite(auth.currentUser);
     return;
@@ -270,6 +280,7 @@ async function initAmericaAuth() {
 }
 
 initAmericaAuth().catch(e => {
+  document.documentElement.classList.remove('resume-app');
   console.error('Error inicializando Firebase Auth', e);
   const status = document.getElementById('authStatus');
   if (status) status.textContent = 'No se pudo iniciar Firebase Authentication: ' + (e?.message || e);
