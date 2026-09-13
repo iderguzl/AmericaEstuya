@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>América es Tuya</title>
+<script>try{if(sessionStorage.getItem('americaestuya_resume_main')==='1')document.documentElement.classList.add('resume-app')}catch(e){}</script>
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;font-family:Arial,sans-serif;background:#f4f9fd;color:#123b63}button{touch-action:manipulation}
 .auth-gate{min-height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#062f57,#0b74b8 55%,#12a6cf);padding:24px;position:relative}
@@ -25,6 +26,7 @@ h1{margin:4px 0 8px;font-size:34px}.sub{color:#5d7287;line-height:1.5;margin-bot
 .location-btn{margin-left:auto;display:flex;align-items:center;gap:5px;max-width:38%;border:0;background:#edf5fb;color:#123b63;border-radius:10px;padding:7px 9px;cursor:pointer;font-size:12px}.location-btn span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.location-pin{font-size:18px}.map-btn{border:0;background:#e7f4ff;color:#07539b;border-radius:10px;padding:7px 9px;cursor:pointer;font-size:18px;line-height:1}
 .userbox{display:flex;align-items:center;gap:8px;font-size:13px}.userbox img{width:32px;height:32px;border-radius:50%;object-fit:cover}.logout{display:none}
 iframe{display:block;width:100%;height:calc(100vh - 54px);border:0;background:white}
+.resume-app #authGate,.resume-app #connectedGate{display:none!important}.resume-app #siteApp{display:block!important}
 @media(max-width:700px){.appbar b{font-size:15px}.location-btn{max-width:31%;padding:7px}.location-btn span:last-child{max-width:95px}.map-btn{padding:7px}.userbox span{display:none}.auth-card{padding:28px 24px}.auth-choice:hover{background:transparent}}
 </style>
 </head>
@@ -77,7 +79,7 @@ iframe{display:block;width:100%;height:calc(100vh - 54px);border:0;background:wh
   </div>
   <iframe id="siteFrame" src="site.html?v=20260909-v201" title="América es Tuya"></iframe>
 </div>
-<script type="module" src="auth.js?v=20260909-v201"></script>
+<script type="module" src="auth.js?v=20260913-3"></script>
 <script type="module" src="js/account-sync.js?v=20260911-1"></script>
 <script src="location.js?v=20260909-3"></script>
 <script>
@@ -90,54 +92,20 @@ iframe{display:block;width:100%;height:calc(100vh - 54px);border:0;background:wh
       const side=d.getElementById('side');
       const mob=d.getElementById('mob');
       if(!side)return;
-
-      const protectedPages={
-        tasas:'pages/rates.html?v=20260909-v201',
-        paises:'pages/countries.html?v=20260909-v201',
-        lugares:'pages/places.html?v=20260909-v201',
-        info:'pages/info.html?v=20260909-v201',
-        curiosidades:'pages/curiosities.html?v=20260909-v201',
-        noticias:'pages/news.html?v=20260909-v201',
-        proyecto:'pages/about.html?v=20260909-v201'
-      };
-
+      const protectedPages={tasas:'pages/rates.html?v=20260909-v201',paises:'pages/countries.html?v=20260909-v201',lugares:'pages/places.html?v=20260909-v201',info:'pages/info.html?v=20260909-v201',curiosidades:'pages/curiosities.html?v=20260909-v201',noticias:'pages/news.html?v=20260909-v201',proyecto:'pages/about.html?v=20260909-v201'};
       const closeMenu=()=>side.classList.remove('open');
       d.querySelectorAll('button').forEach(btn=>{btn.style.touchAction='manipulation'});
-
       d.addEventListener('click',e=>{
         const logout=e.target.closest?.('#menuLogout');
-        if(logout){
-          e.preventDefault();
-          e.stopImmediatePropagation();
-          closeMenu();
-          document.getElementById('logoutBtn')?.click();
-          return;
-        }
-
-        const nav=e.target.closest?.('.nav');
-        if(!nav)return;
-        closeMenu();
-        const url=protectedPages[nav.dataset.v];
-        if(!url)return;
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        window.location.assign(url);
+        if(logout){e.preventDefault();e.stopImmediatePropagation();closeMenu();document.getElementById('logoutBtn')?.click();return}
+        const nav=e.target.closest?.('.nav');if(!nav)return;closeMenu();const url=protectedPages[nav.dataset.v];if(!url)return;e.preventDefault();e.stopImmediatePropagation();window.location.assign(url);
       },true);
-
-      d.addEventListener('pointerdown',e=>{
-        if(!side.classList.contains('open'))return;
-        if(side.contains(e.target))return;
-        if(mob&&mob.contains(e.target))return;
-        closeMenu();
-      },true);
-
-      window.addEventListener('pageshow',closeMenu);
-      window.addEventListener('pagehide',closeMenu);
-      d.addEventListener('visibilitychange',()=>{if(d.hidden)closeMenu()});
+      d.addEventListener('pointerdown',e=>{if(!side.classList.contains('open'))return;if(side.contains(e.target))return;if(mob&&mob.contains(e.target))return;closeMenu()},true);
+      window.addEventListener('pageshow',closeMenu);window.addEventListener('pagehide',closeMenu);d.addEventListener('visibilitychange',()=>{if(d.hidden)closeMenu()});
     }catch(e){console.error('No se pudo configurar la aplicación interna',e)}
   });
 })();
 </script>
-<script src="js/menu-structure.js?v=20260911-1"></script>
+<script src="js/menu-structure.js?v=20260913-3"></script>
 </body>
 </html>
