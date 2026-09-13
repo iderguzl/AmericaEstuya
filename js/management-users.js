@@ -1,5 +1,5 @@
 // Gestión de Usuarios para America es Tuya.
-// Se carga solamente desde pages/management.html después de que la página termina de iniciar.
+// Sigue el mismo patrón CRUD que Clientes.
 
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyCanpMR3uSiZAecwLYG9nWiXvaksJncX0U',
@@ -12,7 +12,6 @@ const FIREBASE_CONFIG = {
 };
 
 const DATA_API_URL = 'https://ep-muddy-fire-awvetyx3.apirest.c-12.us-east-1.aws.neon.tech/americaestuya/rest/v1';
-const RESUME_MAIN_KEY = 'americaestuya_resume_main';
 
 let currentToken = '';
 let currentAccount = null;
@@ -25,13 +24,6 @@ const $ = id => document.getElementById(id);
 const escapeHtml = value => String(value ?? '').replace(/[&<>'\"]/g, ch => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '\"': '&quot;'
 }[ch]));
-
-function makeBigintId() {
-  const parts = new Uint32Array(2);
-  crypto.getRandomValues(parts);
-  const value = (BigInt(parts[0] & 0x7fffffff) << 32n) | BigInt(parts[1]);
-  return value === 0n ? '1' : value.toString();
-}
 
 function setUserMessage(message, type = '') {
   const el = $('userStatus');
@@ -50,11 +42,23 @@ function clearTransientMessages() {
 function configureBackButton() {
   const back = document.querySelector('.back');
   if (!back) return;
+
   back.removeAttribute('onclick');
   back.addEventListener('click', event => {
     event.preventDefault();
-    sessionStorage.setItem(RESUME_MAIN_KEY, '1');
-    window.location.replace('../');
+
+    // Volver a la página real desde la que se entró a Gestión.
+    // No forzar nunca la raíz/login.
+    try {
+      const ref = document.referrer ? new URL(document.referrer) : null;
+      if (ref && ref.origin === location.origin && ref.href !== location.href) {
+        location.href = ref.href;
+        return;
+      }
+    } catch (_) {}
+
+    if (history.length > 1) history.back();
+    else location.href = '../site.html';
   });
 }
 
@@ -66,7 +70,7 @@ function injectUsersUI() {
   const oldPlaceholder = section.querySelector('.placeholder');
   const additional = section.querySelector('.additional-box');
 
-  if (oldPlaceholder) oldPlaceholder.remove();
+  oldPlaceholder?.remove();
 
   const box = document.createElement('div');
   box.innerHTML = `
@@ -74,9 +78,7 @@ function injectUsersUI() {
     <div id="userSearch" class="searchbar">
       <input id="userSearchText" type="search" placeholder="Buscar">
       <select id="userFilter" aria-label="Filtrar usuarios">
-        <option value="all">Todos</option>
         <option value="active">Activos</option>
-        <option value="inactive">Inactivos</option>
       </select>
     </div>
     <form id="userForm" class="client-form">
@@ -131,6 +133,7 @@ function resetUserForm() {
 function openUserForm(user = null) {
   resetUserForm();
   setUserMessage('');
+
   if (user) {
     $('userId').value = user.user_id;
     $('userName').value = user.name || '';
@@ -138,6 +141,7 @@ function openUserForm(user = null) {
     $('userPhone').value = user.phone || '';
     $('userActive').value = String(user.is_active !== false);
   }
+
   $('userForm').classList.add('open');
   $('userName').focus();
 }
@@ -150,16 +154,11 @@ function closeUserForm() {
 
 function visibleUsers() {
   const q = $('userSearchText').value.trim().toLowerCase();
-  const filter = $('userFilter').value;
+
   return [...usersCache]
-    .filter(user => {
-      const matchesText = !q || [user.name, user.email, user.phone]
-        .some(v => String(v || '').toLowerCase().includes(q));
-      const matchesState = filter === 'all'
-        || (filter === 'active' && user.is_active !== false)
-        || (filter === 'inactive' && user.is_active === false);
-      return matchesText && matchesState;
-    })
+    .filter(user => user.is_active !== false)
+    .filter(user => !q || [user.name, user.email, user.phone]
+      .some(v => String(v || '').toLowerCase().includes(q)))
     .sort((a, b) => {
       const n = String(a.name || '').localeCompare(String(b.name || ''), 'es', { sensitivity: 'base' });
       return userSortAsc ? n : -n;
@@ -169,8 +168,8 @@ function visibleUsers() {
 function renderUsers() {
   const list = $('usersList');
   if (!list) return;
-  const rows = visibleUsers();
 
+  const rows = visibleUsers();
   if (!rows.length) {
     list.innerHTML = '<div class="no-items">Sin resultados</div>';
     return;
@@ -186,9 +185,7 @@ function renderUsers() {
           ${user.phone ? `<span>${escapeHtml(user.phone)}</span>` : ''}
         </div>
       </div>
-      <span class="client-state ${user.is_active === false ? 'off' : ''}">
-        ${user.is_active === false ? 'Inactivo' : 'Activo'}
-      </span>
+      <span class="client-state">Activo</span>
     </div>`).join('');
 
   list.querySelectorAll('.client-row').forEach(row => {
@@ -197,6 +194,7 @@ function renderUsers() {
       setUserMessage('');
       renderUsers();
     };
+
     row.addEventListener('click', select);
     row.addEventListener('keydown', event => {
       if (event.key === 'Enter' || event.key === ' ') {
@@ -214,12 +212,14 @@ async function waitForFirebaseUser(auth) {
   if (auth.currentUser) return auth.currentUser;
 
   const { onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js');
-  return await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
+    let unsubscribe = () => {};
     const timer = setTimeout(() => {
       unsubscribe();
       reject(new Error('No hay una sesión activa.'));
     }, 8000);
-    const unsubscribe = onAuthStateChanged(auth, user => {
+
+    unsubscribe = onAuthStateChanged(auth, user => {
       if (!user) return;
       clearTimeout(timer);
       unsubscribe();
@@ -247,6 +247,7 @@ async function getSession() {
     `${DATA_API_URL}/accounts?select=account_id&auth_uid=eq.${encodeURIComponent(user.uid)}`,
     { headers: { Authorization: `Bearer ${currentToken}` } }
   );
+
   if (!response.ok) throw new Error(await response.text());
   const rows = await response.json();
   currentAccount = rows[0] || null;
@@ -255,17 +256,17 @@ async function getSession() {
 
 async function loadUsers() {
   setUserMessage('');
-  if (!currentToken || !currentAccount) {
-    await getSession();
-  }
+  if (!currentToken || !currentAccount) await getSession();
 
   try {
     const response = await fetch(
-      `${DATA_API_URL}/users?select=user_id,name,email,phone,is_active,created_at,updated_at&account_id=eq.${currentAccount.account_id}`,
+      `${DATA_API_URL}/users?select=user_id,name,email,phone,is_active,created_at,updated_at&account_id=eq.${currentAccount.account_id}&is_active=eq.true`,
       { headers: { Authorization: `Bearer ${currentToken}` } }
     );
+
     if (!response.ok) throw new Error(await response.text());
     usersCache = await response.json();
+    selectedUserId = null;
     renderUsers();
     setUserMessage('');
   } catch (error) {
@@ -301,7 +302,8 @@ async function saveUser(event) {
     url += `?user_id=eq.${encodeURIComponent(id)}&account_id=eq.${currentAccount.account_id}`;
     method = 'PATCH';
   } else {
-    payload.user_id = makeBigintId();
+    // Igual que Clientes: la base de datos genera user_id.
+    // Enviar un ID manual impedía guardar cuando la columna es identity.
     payload.account_id = currentAccount.account_id;
   }
 
@@ -315,6 +317,7 @@ async function saveUser(event) {
       },
       body: JSON.stringify(payload)
     });
+
     if (!response.ok) throw new Error(await response.text());
 
     closeUserForm();
@@ -339,6 +342,7 @@ async function softDeleteUser() {
   setUserMessage('');
   try {
     if (!currentToken || !currentAccount) await getSession();
+
     const response = await fetch(
       `${DATA_API_URL}/users?user_id=eq.${encodeURIComponent(user.user_id)}&account_id=eq.${currentAccount.account_id}`,
       {
@@ -350,6 +354,7 @@ async function softDeleteUser() {
         body: JSON.stringify({ is_active: false, updated_at: new Date().toISOString() })
       }
     );
+
     if (!response.ok) throw new Error(await response.text());
     selectedUserId = null;
     await loadUsers();
@@ -364,12 +369,7 @@ function exportUsers() {
   const rows = visibleUsers();
   const csv = [
     'Nombre,Correo,Telefono,Estado',
-    ...rows.map(user => [
-      user.name,
-      user.email,
-      user.phone,
-      user.is_active === false ? 'Inactivo' : 'Activo'
-    ].map(quote).join(','))
+    ...rows.map(user => [user.name, user.email, user.phone, 'Activo'].map(quote).join(','))
   ].join('\n');
 
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
@@ -382,6 +382,7 @@ function exportUsers() {
 
 function handleUserTool(action, button) {
   setUserMessage('');
+
   if (action === 'new') {
     selectedUserId = null;
     renderUsers();
@@ -454,6 +455,7 @@ function wireUsersToolbar() {
 async function initUsersManagement() {
   if (initialized) return;
   initialized = true;
+
   injectUsersUI();
   configureBackButton();
   clearTransientMessages();
@@ -462,7 +464,6 @@ async function initUsersManagement() {
   $('cancelUserBtn')?.addEventListener('click', closeUserForm);
   $('userForm')?.addEventListener('submit', saveUser);
   $('userSearchText')?.addEventListener('input', renderUsers);
-  $('userFilter')?.addEventListener('change', renderUsers);
 
   window.addEventListener('pageshow', event => {
     clearTransientMessages();
