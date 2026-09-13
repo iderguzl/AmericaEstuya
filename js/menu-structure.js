@@ -47,7 +47,11 @@
       if(!nav)return;
       if(nav.dataset.v==='gestion'){
         if(sessionStorage.getItem('americaestuya_session_access')!=='google')return;
-        window.location.assign('pages/management.html?v=20260911-1');
+        // Se marca ANTES de salir del index. Así tanto la flecha de Gestión
+        // como el botón Atrás del teléfono vuelven a Inicio sin mostrar login.
+        sessionStorage.setItem('americaestuya_resume_main','1');
+        window.location.assign('pages/management.html?v=20260913-2');
+        return;
       }
       if(nav.dataset.v==='inicio'){
         d.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
