@@ -59,8 +59,6 @@ async function initAmericaAuth() {
   let connectedUser = null;
   let guestMode = false;
   let waitingForChoice = true;
-  localStorage.removeItem(LOCAL_ACCESS_KEY);
-  sessionStorage.removeItem(SESSION_ACCESS_KEY);
 
   const setButtons = disabled => {
     if (googleBtn) googleBtn.disabled = disabled;
@@ -152,6 +150,7 @@ async function initAmericaAuth() {
     guestMode = false;
     localStorage.removeItem(LOCAL_ACCESS_KEY);
     sessionStorage.removeItem(SESSION_ACCESS_KEY);
+    sessionStorage.removeItem(RESUME_MAIN_KEY);
     gate.style.display = 'grid';
     connectedGate.style.display = 'none';
     app.style.display = 'none';
@@ -176,6 +175,7 @@ async function initAmericaAuth() {
 
   const returningFromFacebook = sessionStorage.getItem('facebookRedirectPending') === '1';
   const returningFromManagement = sessionStorage.getItem(RESUME_MAIN_KEY) === '1';
+  const rememberedAuthenticatedSession = sessionStorage.getItem(SESSION_ACCESS_KEY) === 'google';
   if (status) status.textContent = returningFromFacebook ? 'Completando acceso…' : '';
   setButtons(true);
 
@@ -194,11 +194,13 @@ async function initAmericaAuth() {
     try { await auth.authStateReady(); } catch (_) {}
   }
 
-  if (returningFromManagement && auth.currentUser) {
+  // Si venimos de Gestión (flecha web o botón Atrás del teléfono),
+  // la sesión de Firebase sigue siendo válida y se recupera Inicio directamente.
+  if ((returningFromManagement || rememberedAuthenticatedSession) && auth.currentUser) {
     showMainSite(auth.currentUser);
     return;
   }
-  if (returningFromManagement) sessionStorage.removeItem(RESUME_MAIN_KEY);
+  if (returningFromManagement && !auth.currentUser) sessionStorage.removeItem(RESUME_MAIN_KEY);
 
   if (returningFromFacebook) {
     sessionStorage.removeItem('facebookRedirectPending');
