@@ -8,13 +8,14 @@
     if(!side)return;
 
     const style=d.createElement('style');
-    style.textContent='.menu-group{display:block;width:100%;border:0;background:transparent;color:#dceeff;text-align:left;padding:14px;border-radius:12px;font-size:16px;margin:3px 0}.menu-group:hover,.menu-group.open{background:#1688df;color:#fff}.submenu{display:none;padding-left:10px}.submenu.open{display:block}.submenu .nav{font-size:15px;padding:11px 12px;background:#ffffff0d}[data-auth-only][hidden]{display:none!important}';
+    style.textContent='.menu-group{display:block;width:100%;border:0;background:transparent;color:#dceeff;text-align:left;padding:14px;border-radius:12px;font-size:16px;margin:3px 0}.menu-group:hover,.menu-group.open{background:#1688df;color:#fff}.submenu{display:none;padding-left:10px}.submenu.open{display:block}.submenu .nav{font-size:15px;padding:11px 12px;background:#ffffff0d}.report-nav{padding-left:28px!important;font-size:15px!important;color:#cfe9fb!important}[data-auth-only][hidden]{display:none!important}';
     d.head.appendChild(style);
 
     side.innerHTML=`
       <h3>☰ Menú</h3>
       <button class="nav active" data-v="inicio">⌂ Inicio</button>
       <button class="nav" data-v="gestion" data-auth-only>▣ Gestión</button>
+      <button class="nav report-nav" data-v="report" data-auth-only>▤ Generar Reporte</button>
       <button class="menu-group" id="utilitiesToggle" type="button">⚙ Utilidades <span>›</span></button>
       <div class="submenu" id="utilitiesMenu">
         <button class="nav" data-v="paises">● Países de América</button>
@@ -29,10 +30,12 @@
     const utilitiesToggle=d.getElementById('utilitiesToggle');
     const utilitiesMenu=d.getElementById('utilitiesMenu');
     const gestion=side.querySelector('[data-v="gestion"]');
+    const report=side.querySelector('[data-v="report"]');
 
     const syncAccess=()=>{
       const isGuest=sessionStorage.getItem('americaestuya_session_access')==='guest';
       if(gestion)gestion.hidden=isGuest;
+      if(report)report.hidden=isGuest;
     };
     syncAccess();
     setInterval(syncAccess,400);
@@ -45,12 +48,11 @@
     side.addEventListener('click',e=>{
       const nav=e.target.closest?.('.nav');
       if(!nav)return;
-      if(nav.dataset.v==='gestion'){
+      if(nav.dataset.v==='gestion' || nav.dataset.v==='report'){
         if(sessionStorage.getItem('americaestuya_session_access')!=='google')return;
-        // Se marca ANTES de salir del index. Así tanto la flecha de Gestión
-        // como el botón Atrás del teléfono vuelven a Inicio sin mostrar login.
         sessionStorage.setItem('americaestuya_resume_main','1');
-        window.location.assign('pages/management.html?v=20260913-2');
+        const hash=nav.dataset.v==='report'?'#report':'';
+        window.location.assign('pages/management.html?v=20260916-1'+hash);
         return;
       }
       if(nav.dataset.v==='inicio'){
