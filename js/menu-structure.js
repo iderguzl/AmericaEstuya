@@ -51,8 +51,8 @@
       if(nav.dataset.v==='gestion' || nav.dataset.v==='report'){
         if(sessionStorage.getItem('americaestuya_session_access')!=='google')return;
         sessionStorage.setItem('americaestuya_resume_main','1');
-        const hash=nav.dataset.v==='report'?'#report':'';
-        window.location.assign('pages/management.html?v=20260916-1'+hash);
+        const target=nav.dataset.v==='report'?'pages/report.html?v=20260917-1':'pages/management.html?v=20260917-1';
+        window.location.assign(target);
         return;
       }
       if(nav.dataset.v==='inicio'){
