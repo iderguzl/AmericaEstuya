@@ -10,7 +10,7 @@ style.textContent=`
 .additional-picker-row{display:grid;grid-template-columns:minmax(0,1fr) 46px;gap:8px;align-items:center;margin-bottom:12px}
 .additional-picker-hint{height:42px;border:1px solid #cbdbe7;border-radius:10px;background:#fff;color:#8093a2;padding:0 12px;display:flex;align-items:center}
 .additional-more{height:42px;border:0;border-radius:10px;background:#0b78c5;color:#fff;font-size:22px;font-weight:900;cursor:pointer;line-height:1}
-.additional-saving{display:block!important;background:#eef6ff;color:#07589b;font-weight:800}.additional-fields{display:grid;gap:12px}.additional-field-row{display:grid;grid-template-columns:minmax(130px,.8fr) minmax(0,1.2fr) 42px;gap:10px;align-items:center}.additional-remove{width:40px;height:40px;border:0;border-radius:10px;background:#fff1f1;color:#a63232;display:grid;place-items:center;cursor:pointer}.additional-remove:hover{background:#ffe3e3}.additional-remove svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.additional-saving{display:block!important;background:#eef6ff;color:#07589b;font-weight:800}.additional-progress{margin-top:8px;height:10px;border-radius:999px;background:#d9e8f5;overflow:hidden}.additional-progress-bar{height:100%;width:0%;background:#0b78c5;transition:width .15s linear}.additional-progress-text{margin-top:6px;font-size:12px;font-weight:800;color:#315b7a}.additional-fields{display:grid;gap:12px}.additional-field-row{display:grid;grid-template-columns:minmax(130px,.8fr) minmax(0,1.2fr) 42px;gap:10px;align-items:center}.additional-remove{width:40px;height:40px;border:0;border-radius:10px;background:#fff1f1;color:#a63232;display:grid;place-items:center;cursor:pointer}.additional-remove:hover{background:#ffe3e3}.additional-remove svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .additional-field-name{font-weight:800;color:#315b7a}.additional-field-control input,.additional-field-control select,.additional-field-control textarea{width:100%;border:1px solid #cbdbe7;border-radius:10px;background:#fff;color:#173f61;padding:0 11px}.additional-field-control input,.additional-field-control select{height:42px}.additional-field-control textarea{min-height:86px;padding:10px 11px;resize:vertical}
 .additional-file-current{font-size:12px;color:#6b8295;margin-top:8px;overflow-wrap:anywhere}.additional-file-current b{color:#315b7a}.additional-file-open{border:0;background:transparent;color:#07589b;font-weight:800;text-decoration:underline;padding:0;cursor:pointer;max-width:100%;text-align:left;overflow-wrap:anywhere}.additional-image-button{display:block;text-decoration:none;margin:0 0 8px}.additional-file-preview{display:block;max-width:180px;max-height:180px;border:1px solid #d7e4ed;border-radius:10px;object-fit:cover;background:#f7fafc}
 .additional-picker{border:0;border-radius:16px;padding:0;max-width:470px;width:calc(100% - 28px);box-shadow:0 24px 70px #102f4960}.additional-picker::backdrop{background:#102f4966}.additional-picker-box{padding:18px}.additional-picker-title{text-align:center;font-size:20px;font-weight:900;margin-bottom:12px}.additional-picker-list{display:grid;gap:8px;max-height:58vh;overflow:auto}.additional-picker-item{border:1px solid #dce7f0;background:#fff;border-radius:11px;padding:11px 12px;text-align:left;color:#173f61;cursor:pointer}.additional-picker-item:hover{background:#eef6fb}.additional-picker-name{font-weight:900}.additional-picker-meta{font-size:12px;color:#71879a;margin-top:3px}.additional-picker-close{margin-top:12px;width:100%;border:1px solid #cbdbe7;background:#fff;color:#28506f;border-radius:10px;padding:10px;font-weight:800;cursor:pointer}
@@ -44,7 +44,7 @@ async function storageApi(){
 function safeFileName(name){return String(name||'archivo').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9._-]+/g,'_').replace(/^_+|_+$/g,'')||'archivo'}
 function fileExtension(name){const m=String(name||'').toLowerCase().match(/(\.[a-z0-9]+)$/);return m?m[1]:''}
 function allowedExtensions(def){return optionsFor(def).map(o=>String(o.name||'').trim().toLowerCase()).filter(x=>/^\.[a-z0-9]+$/.test(x))}
-async function uploadAdditionalFile(type,id,def,file){
+async function uploadAdditionalFile(type,id,def,file,onProgress){
   await ensureSession();
   if(!file)throw new Error('No se seleccionó ningún archivo.');
   if(file.size>20*1024*1024)throw new Error('El archivo supera el límite de 20 MB.');
@@ -56,7 +56,22 @@ async function uploadAdditionalFile(type,id,def,file){
   const app=appMod.getApp();
   const storage=storageMod.getStorage(app,'gs://americaestuya.firebasestorage.app');
   const fileRef=storageMod.ref(storage,path);
-  await storageMod.uploadBytes(fileRef,file,{contentType:file.type||'application/octet-stream'});
+  const task=storageMod.uploadBytesResumable(fileRef,file,{contentType:file.type||'application/octet-stream'});
+  await new Promise((resolve,reject)=>{
+    let lastChange=Date.now();
+    const timeout=setInterval(()=>{
+      if(Date.now()-lastChange>60000){
+        clearInterval(timeout);
+        try{task.cancel()}catch{}
+        reject(new Error('La subida tardó demasiado tiempo. Intente nuevamente.'));
+      }
+    },1000);
+    task.on('state_changed',snapshot=>{
+      lastChange=Date.now();
+      const pct=snapshot.totalBytes?Math.round((snapshot.bytesTransferred/snapshot.totalBytes)*100):0;
+      if(typeof onProgress==='function')onProgress(pct,snapshot.bytesTransferred,snapshot.totalBytes);
+    },err=>{clearInterval(timeout);reject(err)},()=>{clearInterval(timeout);if(typeof onProgress==='function')onProgress(100,file.size,file.size);resolve()});
+  });
   await storageMod.getDownloadURL(fileRef);
   return path;
 }
@@ -157,8 +172,14 @@ async function saveAdditional(e,type,id,defs){
       if(input.dataset.kind==='FILE'){
         const file=input.files?.[0];
         if(!file)continue;
-        status.textContent=`Subiendo ${file.name}...`;status.className='status additional-status additional-saving';
-        value=await uploadAdditionalFile(type,id,def,file);
+        status.className='status additional-status additional-saving';
+        status.innerHTML=`<div>Subiendo ${esc(file.name)}...</div><div class="additional-progress"><div class="additional-progress-bar"></div></div><div class="additional-progress-text">0%</div>`;
+        const progressBar=status.querySelector('.additional-progress-bar');
+        const progressText=status.querySelector('.additional-progress-text');
+        value=await uploadAdditionalFile(type,id,def,file,pct=>{
+          if(progressBar)progressBar.style.width=`${pct}%`;
+          if(progressText)progressText.textContent=`${pct}%`;
+        });
       }else{
         value=String(input.value??'').trim();
         if(!validate(def,value))throw new Error(`${def.name}: formato inválido. Debe cumplir ${def.format||'el formato configurado'}`);
