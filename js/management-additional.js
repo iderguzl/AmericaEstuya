@@ -123,7 +123,6 @@ function driveXhrDiagnostic(xhr,eventName){
   return parts.join(' | ');
 }
 async function uploadDriveMultipart(folderId,file,onProgress){
-  const token=getDriveToken();
   await verifyDriveApiAccess();
   const boundary='-------AmericaEsTuya'+Date.now().toString(36);
   const metadata={name:file.name,parents:[folderId]};
@@ -134,36 +133,27 @@ async function uploadDriveMultipart(folderId,file,onProgress){
     file,
     `\\r\\n--${boundary}--`
   ],{type:`multipart/related; boundary=${boundary}`});
-  return new Promise((resolve,reject)=>{
-    const xhr=new XMLHttpRequest();
-    xhr.open('POST','https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType');
-    xhr.timeout=90000;
-    xhr.setRequestHeader('Authorization',`Bearer ${token}`);
-    xhr.setRequestHeader('Content-Type',`multipart/related; boundary=${boundary}`);
-    xhr.upload.onprogress=e=>{
-      if(e.lengthComputable&&typeof onProgress==='function')onProgress(Math.max(1,Math.min(99,Math.round(e.loaded/e.total*100))),e.loaded,e.total,'uploading');
-    };
-    xhr.upload.onload=()=>{
-      if(typeof onProgress==='function')onProgress(100,file.size,file.size,'confirming');
-    };
-    xhr.onerror=()=>reject(new Error('Google Drive NETWORK ERROR: '+driveXhrDiagnostic(xhr,'error')));
-    xhr.onabort=()=>reject(new Error('Google Drive ABORTADO: '+driveXhrDiagnostic(xhr,'abort')));
-    xhr.ontimeout=()=>reject(new Error('Google Drive TIMEOUT: '+driveXhrDiagnostic(xhr,'timeout')));
-    xhr.onload=()=>{
-      if(xhr.status>=200&&xhr.status<300){
-        try{const out=JSON.parse(xhr.responseText);if(!out?.id)throw new Error('Google Drive no devolvió fileId');if(typeof onProgress==='function')onProgress(100,file.size,file.size,'done');resolve(out)}
-        catch{reject(new Error('Google Drive devolvió una respuesta no válida: '+(xhr.responseText||'(vacía)')))}
-      }else{
-        if(xhr.status===401){
-          sessionStorage.removeItem(DRIVE_ACCESS_TOKEN_KEY);
-          sessionStorage.removeItem(DRIVE_ACCESS_TOKEN_EXP_KEY);
-        }
-        reject(new Error(`Google Drive HTTP ${xhr.status}: ${xhr.responseText||xhr.statusText||'sin detalle devuelto por Google'}`));
-      }
-    };
-    if(typeof onProgress==='function')onProgress(0,0,file.size);
-    xhr.send(body);
-  });
+
+  if(typeof onProgress==='function')onProgress(5,0,file.size,'uploading');
+  let pct=5;
+  const pulse=setInterval(()=>{
+    pct=Math.min(92,pct+(pct<60?7:pct<80?4:2));
+    if(typeof onProgress==='function')onProgress(pct,0,file.size,'uploading');
+  },450);
+
+  try{
+    const r=await driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType',{
+      method:'POST',
+      headers:{'Content-Type':`multipart/related; boundary=${boundary}`},
+      body
+    });
+    const out=await r.json();
+    if(!out?.id)throw new Error('Google Drive no devolvió fileId');
+    if(typeof onProgress==='function')onProgress(100,file.size,file.size,'done');
+    return out;
+  }finally{
+    clearInterval(pulse);
+  }
 }
 async function uploadAdditionalFile(type,id,def,file,onProgress){
   await ensureSession();
@@ -289,9 +279,8 @@ async function saveAdditional(e,type,id,defs){
         value=await uploadAdditionalFile(type,id,def,file,(pct,loaded,total,state)=>{
           if(progressBar)progressBar.style.width=`${pct}%`;
           if(progressText){
-            if(state==='confirming')progressText.textContent='100% · Confirmando en Google Drive…';
-            else if(state==='done')progressText.textContent='100% · Confirmado';
-            else progressText.textContent=`${pct}%`;
+            if(state==='done')progressText.textContent='100% · Guardado en Google Drive';
+            else progressText.textContent=`${pct}% · Subiendo…`;
           }
         });
       }else{
