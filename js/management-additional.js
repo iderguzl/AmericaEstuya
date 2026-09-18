@@ -339,7 +339,7 @@ async function removeAdditionalValue(type,id,def){
   chosen[type].delete(String(def.id_sequence));
   await renderFor(type);
 }
-async function renderFor(type){const box=document.getElementById(type==='CLIENT'?'clientAdditional':'userAdditional');if(!box)return;const id=selected[type];if(!id){box.innerHTML=`Selecciona un ${type==='CLIENT'?'cliente':'usuario'}.`;return}if(!allRows.length)await loadDefinitions();const defs=defsFor(type),values=await loadValues(type,id);Object.keys(values).forEach(k=>chosen[type].add(String(k)));const selectedDefs=defs.filter(d=>chosen[type].has(String(d.id_sequence)));const trash='<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5"/></svg>';box.innerHTML=`<form class="additional-form" data-additional-type="${type}"><div class="additional-picker-row"><div class="additional-picker-hint">Añadir dato adicional</div><button class="additional-more" type="button" title="Seleccionar dato" aria-label="Seleccionar dato">...</button></div>${selectedDefs.length?'<div class="toolstrip additional-toolstrip"><button class="tool-btn additional-save-top" type="submit" title="Guardar datos adicionales" aria-label="Guardar datos adicionales"><svg viewBox="0 0 24 24"><path d="M5 3h12l2 2v16H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></svg></button></div>':''}<div class="additional-fields">${selectedDefs.map(d=>`<div class="additional-field-row"><div class="additional-field-name">${esc(d.name)}</div><div class="additional-field-control">${controlHtml(d,values[String(d.id_sequence)])}</div><button type="button" class="additional-remove" data-remove-def="${d.id_sequence}" title="Quitar dato adicional" aria-label="Quitar ${esc(d.name)}">${trash}</button></div>`).join('')}</div><div class="status additional-status"></div></form>`;box.querySelector('.additional-more').onclick=()=>openPicker(type);hydrateStoredFilePreviews(box).catch(console.error);box.querySelectorAll('.additional-file-open').forEach(b=>b.addEventListener('click',async()=>{try{await openStoredFile(b.dataset.filePath)}catch(err){console.error(err);const s=box.querySelector('.additional-status');if(s){s.textContent='ERROR REAL: '+(err?.message||String(err));s.className='status additional-status error'}}}));box.querySelectorAll('[data-remove-def]').forEach(b=>b.addEventListener('click',async()=>{const def=selectedDefs.find(d=>String(d.id_sequence)===String(b.dataset.removeDef));if(!def)return;try{await removeAdditionalValue(type,id,def)}catch(err){console.error(err);const s=box.querySelector('.additional-status');if(s){s.textContent='ERROR REAL: '+(err?.message||String(err));s.className='status additional-status error'}}}));const form=box.querySelector('form');const saveBtn=box.querySelector('.additional-save-top');if(saveBtn)saveBtn.addEventListener('click',()=>{const s=form.querySelector('.additional-status');if(s){s.textContent='Guardando...';s.className='status additional-status additional-saving'}});form.addEventListener('submit',e=>saveAdditional(e,type,id,selectedDefs))}
+async function renderFor(type){const box=document.getElementById(type==='CLIENT'?'clientAdditional':'userAdditional');if(!box)return;const id=selected[type];if(!id){box.innerHTML=`Selecciona un ${type==='CLIENT'?'cliente':'usuario'}.`;return}if(!allRows.length)await loadDefinitions();const defs=defsFor(type),values=await loadValues(type,id);Object.keys(values).forEach(k=>chosen[type].add(String(k)));const selectedDefs=defs.filter(d=>chosen[type].has(String(d.id_sequence)));const trash='<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5"/></svg>';box.innerHTML=`<form class="additional-form" data-additional-type="${type}"><div class="additional-picker-row"><div class="additional-picker-hint">Añadir dato adicional</div><button class="additional-more" type="button" title="Seleccionar dato" aria-label="Seleccionar dato">...</button></div><div class="additional-fields">${selectedDefs.map(d=>`<div class="additional-field-row"><div class="additional-field-name">${esc(d.name)}</div><div class="additional-field-control">${controlHtml(d,values[String(d.id_sequence)])}</div><button type="button" class="additional-remove" data-remove-def="${d.id_sequence}" title="Quitar dato adicional" aria-label="Quitar ${esc(d.name)}">${trash}</button></div>`).join('')}</div><div class="status additional-status"></div></form>`;box.querySelector('.additional-more').onclick=()=>openPicker(type);hydrateStoredFilePreviews(box).catch(console.error);box.querySelectorAll('.additional-file-open').forEach(b=>b.addEventListener('click',async()=>{try{await openStoredFile(b.dataset.filePath)}catch(err){console.error(err);const s=box.querySelector('.additional-status');if(s){s.textContent='ERROR REAL: '+(err?.message||String(err));s.className='status additional-status error'}}}));box.querySelectorAll('[data-remove-def]').forEach(b=>b.addEventListener('click',async()=>{const def=selectedDefs.find(d=>String(d.id_sequence)===String(b.dataset.removeDef));if(!def)return;try{await removeAdditionalValue(type,id,def)}catch(err){console.error(err);const s=box.querySelector('.additional-status');if(s){s.textContent='ERROR REAL: '+(err?.message||String(err));s.className='status additional-status error'}}}));const form=box.querySelector('form');form.addEventListener('submit',e=>saveAdditional(e,type,id,selectedDefs))}
 async function saveAdditional(e,type,id,defs){
   e.preventDefault();const form=e.currentTarget,status=form.querySelector('.additional-status');status.textContent='Guardando...';status.className='status additional-status additional-saving';await ensureSession();
   const table=type==='CLIENT'?'client_data':'user_data',key=type==='CLIENT'?'client_id':'user_id',pk=type==='CLIENT'?'client_data_id':'user_data_id';
@@ -385,6 +385,113 @@ async function saveAdditional(e,type,id,defs){
     visibleStatus.className='status additional-status error'
   }
 }
+
+window.managementSaveAdditional=async function(type){
+  const t=String(type||'').toUpperCase();
+  if(t!=='CLIENT'&&t!=='USER')return false;
+  const id=selected[t];
+  const form=document.querySelector(\`[data-additional-type="\${t}"]\`);
+  if(!id||!form)return false;
+  if(!allRows.length)await loadDefinitions();
+  const defs=defsFor(t).filter(d=>chosen[t].has(String(d.id_sequence)));
+  if(!defs.length)return false;
+  await saveAdditional({preventDefault(){},currentTarget:form},t,id,defs);
+  return true;
+};
+
+function downloadExport(blob,name){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function exportSafe(v){return String(v??'').replace(/[\\/:*?"<>|]+/g,'_').trim()||'registro'}
+function exportTitle(type,id){return \`DATOS DEL \${type==='CLIENT'?'CLIENTE':type==='USER'?'USUARIO':'CUENTA'} \${id??''}\`.trim()}
+function dataUrlFromBlob(blob){return new Promise((resolve,reject)=>{const fr=new FileReader();fr.onload=()=>resolve(fr.result);fr.onerror=reject;fr.readAsDataURL(blob)})}
+async function storedImageData(value){
+  const ref=decodeDriveRef(value);
+  if(!ref)return null;
+  const r=await driveFetch(\`https://www.googleapis.com/drive/v3/files/\${encodeURIComponent(ref.id)}?alt=media\`);
+  const blob=await r.blob();
+  return {dataUrl:await dataUrlFromBlob(blob),mime:blob.type||ref.mimeType||'image/jpeg',name:ref.name||storedFileName(value)};
+}
+function loadExternalScript(src){
+  return new Promise((resolve,reject)=>{
+    const found=[...document.scripts].find(s=>s.src===src);
+    if(found){if(found.dataset.loaded==='1'||window.jspdf)return resolve();found.addEventListener('load',resolve,{once:true});found.addEventListener('error',reject,{once:true});return}
+    const s=document.createElement('script');s.src=src;s.onload=()=>{s.dataset.loaded='1';resolve()};s.onerror=reject;document.head.appendChild(s);
+  });
+}
+async function exportRowsFor(type,id,parent,includeAdditional){
+  const rows=Object.entries(parent||{}).map(([name,value])=>({name,value:String(value??''),kind:'TEXT'}));
+  if(!includeAdditional||type==='ACCOUNT')return rows;
+  if(!allRows.length)await loadDefinitions();
+  const defs=defsFor(type);
+  const values=await loadValues(type,id);
+  for(const def of defs){
+    const value=values[String(def.id_sequence)];
+    if(value==null||String(value)==='')continue;
+    rows.push({name:def.name||'Dato',value:String(value),kind:norm(def.data_type)==='FILE'?'FILE':'TEXT'});
+  }
+  return rows;
+}
+async function exportRecordCsv(title,rows){
+  const q=v=>'"'+String(v??'').replaceAll('"','""')+'"';
+  const lines=[q(title)+',' , 'Campo,Valor'];
+  rows.forEach(r=>lines.push([r.name,r.kind==='FILE'?storedFileName(r.value):r.value].map(q).join(',')));
+  downloadExport(new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8'}),exportSafe(title)+'.csv');
+}
+async function exportRecordPdf(title,rows){
+  if(!window.jspdf)await loadExternalScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js');
+  const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});
+  let y=18;const left=15,maxW=180;
+  doc.setFontSize(16);doc.text(title,left,y);y+=10;
+  const ensure=need=>{if(y+need>282){doc.addPage();y=18}};
+  const imageRows=rows.filter(r=>r.kind==='FILE'&&isStoredImage(r.value));
+  const normalRows=rows.filter(r=>!(r.kind==='FILE'&&isStoredImage(r.value)));
+  doc.setFontSize(10);
+  for(const row of normalRows){
+    ensure(14);doc.setFont(undefined,'bold');doc.text(String(row.name),left,y);doc.setFont(undefined,'normal');
+    const value=row.kind==='FILE'?storedFileName(row.value):String(row.value??'');
+    const parts=doc.splitTextToSize(value||'—',118);doc.text(parts,72,y);y+=Math.max(7,parts.length*5.2);
+  }
+  if(imageRows.length){
+    ensure(12);y+=4;doc.setFont(undefined,'bold');doc.setFontSize(12);doc.text('LISTA DE IMÁGENES',left,y);y+=8;doc.setFontSize(10);
+    for(const row of imageRows){
+      try{
+        ensure(70);doc.setFont(undefined,'bold');doc.text(String(row.name),left,y);y+=5;
+        const img=await storedImageData(row.value);if(!img){doc.setFont(undefined,'normal');doc.text(storedFileName(row.value),left,y);y+=7;continue}
+        const props=doc.getImageProperties(img.dataUrl);const maxImgW=95,maxImgH=62;const ratio=Math.min(maxImgW/props.width,maxImgH/props.height,1);
+        const w=props.width*ratio,h=props.height*ratio;doc.addImage(img.dataUrl,img.mime.includes('png')?'PNG':'JPEG',left,y,w,h);y+=h+8;
+      }catch(err){console.warn('No se pudo insertar imagen en PDF',err);doc.setFont(undefined,'normal');doc.text(storedFileName(row.value),left,y);y+=7}
+    }
+  }
+  doc.save(exportSafe(title)+'.pdf');
+}
+function imageFromDataUrl(src){return new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src=src})}
+async function exportRecordJpg(title,rows){
+  const imageRows=rows.filter(r=>r.kind==='FILE'&&isStoredImage(r.value));
+  const loaded=[];
+  for(const row of imageRows){try{const d=await storedImageData(row.value);if(d)loaded.push({row,img:await imageFromDataUrl(d.dataUrl)})}catch(err){console.warn(err)}}
+  const textRows=rows.filter(r=>!(r.kind==='FILE'&&isStoredImage(r.value)));
+  const width=1100,rowH=42,baseH=120+textRows.length*rowH,imagesH=loaded.reduce((s,x)=>s+Math.min(360,Math.max(180,360*x.img.height/x.img.width))+70,0);
+  const canvas=document.createElement('canvas');canvas.width=width;canvas.height=Math.max(700,baseH+imagesH+40);
+  const x=canvas.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,canvas.width,canvas.height);x.fillStyle='#173f61';x.font='bold 30px Arial';x.fillText(title,40,55);
+  let y=105;x.font='bold 20px Arial';
+  for(const row of textRows){x.fillStyle='#315b7a';x.font='bold 18px Arial';x.fillText(String(row.name),40,y);x.fillStyle='#173f61';x.font='18px Arial';x.fillText(row.kind==='FILE'?storedFileName(row.value):String(row.value??'—'),330,y);y+=rowH}
+  if(loaded.length){y+=18;x.fillStyle='#173f61';x.font='bold 22px Arial';x.fillText('LISTA DE IMÁGENES',40,y);y+=35}
+  for(const item of loaded){x.font='bold 18px Arial';x.fillText(String(item.row.name),40,y);y+=15;const w=Math.min(520,item.img.width),h=w*item.img.height/item.img.width;x.drawImage(item.img,40,y,w,h);y+=h+45}
+  await new Promise(resolve=>canvas.toBlob(b=>{downloadExport(b,exportSafe(title)+'.jpg');resolve()},'image/jpeg',0.92));
+}
+window.managementExportRecord=async function({type,id,parent,format,includeAdditional}){
+  const t=String(type||'ACCOUNT').toUpperCase();
+  await ensureSession();
+  const title=exportTitle(t,id),rows=await exportRowsFor(t,id,parent,includeAdditional);
+  if(format==='csv')return exportRecordCsv(title,rows);
+  if(format==='pdf')return exportRecordPdf(title,rows);
+  if(format==='jpg')return exportRecordJpg(title,rows);
+  throw new Error('Formato de exportación no soportado.');
+};
+
 window.addEventListener('management:entity-selected',e=>{if(e.detail?.type==='CLIENT'||e.detail?.type==='USER'){selected[e.detail.type]=e.detail.id;chosen[e.detail.type]=new Set();renderFor(e.detail.type).catch(console.error)}});
 let usersWired=false;function wireUsers(){const list=document.getElementById('usersList');if(!list||usersWired)return false;usersWired=true;list.addEventListener('click',e=>{const row=e.target.closest('.client-row');if(!row)return;selected.USER=row.dataset.id;chosen.USER=new Set();renderFor('USER').catch(console.error)});list.addEventListener('keydown',e=>{const row=e.target.closest('.client-row');if(row&&(e.key==='Enter'||e.key===' ')){selected.USER=row.dataset.id;chosen.USER=new Set();renderFor('USER').catch(console.error)}});return true}
 const obs=new MutationObserver(()=>{if(wireUsers())obs.disconnect()});obs.observe(document.documentElement,{childList:true,subtree:true});wireUsers();ensureSession().then(loadDefinitions).catch(console.error);
