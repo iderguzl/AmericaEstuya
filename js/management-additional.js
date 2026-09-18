@@ -34,73 +34,165 @@ async function ensureSession(){
 }
 window.addEventListener('management:session',e=>{session={token:e.detail.token,accountId:e.detail.accountId,uid:''};ensureSession().then(loadDefinitions).catch(console.error)});
 
-async function storageApi(){
-  if(!storageModulePromise)storageModulePromise=Promise.all([
-    import('https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js'),
-    import('https://www.gstatic.com/firebasejs/12.2.1/firebase-storage.js')
-  ]).then(([appMod,storageMod])=>({appMod,storageMod}));
-  return storageModulePromise;
+const DRIVE_ACCESS_TOKEN_KEY='americaestuya_google_drive_token';
+const DRIVE_ACCESS_TOKEN_EXP_KEY='americaestuya_google_drive_token_exp';
+const DRIVE_ROOT_NAME='America es Tuya';
+
+function safeFileName(name){return String(name||'archivo').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^A-Za-z0-9._-]+/g,'_').replace(/^_+|_+$/g,'')||'archivo'}
+function fileExtension(name){const m=String(name||'').toLowerCase().match(/(\\.[a-z0-9]+)$/);return m?m[1]:''}
+function allowedExtensions(def){return optionsFor(def).map(o=>String(o.name||'').trim().toLowerCase()).filter(x=>/^\\.[a-z0-9]+$/.test(x))}
+
+function getDriveToken(){
+  const token=sessionStorage.getItem(DRIVE_ACCESS_TOKEN_KEY)||'';
+  const exp=Number(sessionStorage.getItem(DRIVE_ACCESS_TOKEN_EXP_KEY)||0);
+  if(!token||!exp||Date.now()>=exp){
+    sessionStorage.removeItem(DRIVE_ACCESS_TOKEN_KEY);
+    sessionStorage.removeItem(DRIVE_ACCESS_TOKEN_EXP_KEY);
+    throw new Error('Google Drive necesita autorización. Cierra sesión y vuelve a entrar con Google una vez para autorizar el acceso a los archivos.');
+  }
+  return token;
 }
-function safeFileName(name){return String(name||'archivo').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9._-]+/g,'_').replace(/^_+|_+$/g,'')||'archivo'}
-function fileExtension(name){const m=String(name||'').toLowerCase().match(/(\.[a-z0-9]+)$/);return m?m[1]:''}
-function allowedExtensions(def){return optionsFor(def).map(o=>String(o.name||'').trim().toLowerCase()).filter(x=>/^\.[a-z0-9]+$/.test(x))}
+async function driveFetch(url,options={}){
+  const token=getDriveToken();
+  const headers=new Headers(options.headers||{});
+  headers.set('Authorization',`Bearer ${token}`);
+  const r=await fetch(url,{...options,headers});
+  if(r.status===401){
+    sessionStorage.removeItem(DRIVE_ACCESS_TOKEN_KEY);
+    sessionStorage.removeItem(DRIVE_ACCESS_TOKEN_EXP_KEY);
+    throw new Error('La autorización de Google Drive venció. Cierra sesión y vuelve a entrar con Google.');
+  }
+  if(!r.ok){
+    let detail='';
+    try{detail=await r.text()}catch{}
+    throw new Error(`Google Drive: ${r.status} ${detail||r.statusText}`);
+  }
+  return r;
+}
+function driveQueryValue(v){return String(v??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
+async function findDriveFolder(name,parentId){
+  const parent=parentId||'root';
+  const q=`mimeType='application/vnd.google-apps.folder' and trashed=false and name='${driveQueryValue(name)}' and '${driveQueryValue(parent)}' in parents`;
+  const u=new URL('https://www.googleapis.com/drive/v3/files');
+  u.searchParams.set('q',q);u.searchParams.set('spaces','drive');u.searchParams.set('fields','files(id,name)');
+  u.searchParams.set('pageSize','10');
+  const r=await driveFetch(u.toString());
+  const data=await r.json();
+  return data.files?.[0]?.id||'';
+}
+async function ensureDriveFolder(name,parentId){
+  const found=await findDriveFolder(name,parentId);
+  if(found)return found;
+  const metadata={name,mimeType:'application/vnd.google-apps.folder'};
+  if(parentId)metadata.parents=[parentId];
+  const r=await driveFetch('https://www.googleapis.com/drive/v3/files?fields=id,name',{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(metadata)
+  });
+  return (await r.json()).id;
+}
+async function driveFolderFor(type,id,def){
+  let parent=await ensureDriveFolder(DRIVE_ROOT_NAME);
+  parent=await ensureDriveFolder('Gestión',parent);
+  const section=type==='CLIENT'?'Clientes':type==='USER'?'Usuarios':'Cuenta';
+  parent=await ensureDriveFolder(section,parent);
+  const entityName=type==='CLIENT'?`Cliente_${Number(id)}`:type==='USER'?`Usuario_${Number(id)}`:`Cuenta_${Number(id)}`;
+  parent=await ensureDriveFolder(entityName,parent);
+  return ensureDriveFolder(`${Number(def.id_sequence)}_${safeFileName(def.name)}`,parent);
+}
+function encodeDriveRef(info){
+  return 'gdrive:'+JSON.stringify({id:info.id,n:info.name||'archivo',m:info.mimeType||'application/octet-stream'});
+}
+function decodeDriveRef(value){
+  const s=String(value||'');
+  if(!s.startsWith('gdrive:'))return null;
+  try{
+    const x=JSON.parse(s.slice(7));
+    return x?.id?{id:String(x.id),name:String(x.n||'archivo'),mimeType:String(x.m||'application/octet-stream')}:null;
+  }catch{return null}
+}
+async function uploadDriveMultipart(folderId,file,onProgress){
+  const token=getDriveToken();
+  const boundary='-------AmericaEsTuya'+Date.now().toString(36);
+  const metadata={name:file.name,parents:[folderId]};
+  const body=new Blob([
+    `--${boundary}\\r\\nContent-Type: application/json; charset=UTF-8\\r\\n\\r\\n`,
+    JSON.stringify(metadata),
+    `\\r\\n--${boundary}\\r\\nContent-Type: ${file.type||'application/octet-stream'}\\r\\n\\r\\n`,
+    file,
+    `\\r\\n--${boundary}--`
+  ],{type:`multipart/related; boundary=${boundary}`});
+  return new Promise((resolve,reject)=>{
+    const xhr=new XMLHttpRequest();
+    xhr.open('POST','https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType');
+    xhr.setRequestHeader('Authorization',`Bearer ${token}`);
+    xhr.setRequestHeader('Content-Type',`multipart/related; boundary=${boundary}`);
+    xhr.upload.onprogress=e=>{
+      if(e.lengthComputable&&typeof onProgress==='function')onProgress(Math.max(1,Math.min(99,Math.round(e.loaded/e.total*100))),e.loaded,e.total);
+    };
+    xhr.onerror=()=>reject(new Error('No se pudo conectar con Google Drive.'));
+    xhr.onload=()=>{
+      if(xhr.status>=200&&xhr.status<300){
+        try{const out=JSON.parse(xhr.responseText);if(typeof onProgress==='function')onProgress(100,file.size,file.size);resolve(out)}
+        catch{reject(new Error('Google Drive devolvió una respuesta no válida.'))}
+      }else{
+        if(xhr.status===401){
+          sessionStorage.removeItem(DRIVE_ACCESS_TOKEN_KEY);
+          sessionStorage.removeItem(DRIVE_ACCESS_TOKEN_EXP_KEY);
+        }
+        reject(new Error(`Google Drive: ${xhr.status} ${xhr.responseText||xhr.statusText}`));
+      }
+    };
+    if(typeof onProgress==='function')onProgress(0,0,file.size);
+    xhr.send(body);
+  });
+}
 async function uploadAdditionalFile(type,id,def,file,onProgress){
   await ensureSession();
   if(!file)throw new Error('No se seleccionó ningún archivo.');
   if(file.size>20*1024*1024)throw new Error('El archivo supera el límite de 20 MB.');
   const allowed=allowedExtensions(def),ext=fileExtension(file.name);
   if(allowed.length&&!allowed.includes(ext))throw new Error(`${def.name}: tipo de archivo no permitido. Permitidos: ${allowed.join(', ')}`);
-  const {appMod,storageMod}=await storageApi();
-  const folder=type==='CLIENT'?'clients':'users';
-  const path=`accounts/${session.uid}/${folder}/${Number(id)}/${Number(def.id_sequence)}/${Date.now()}_${safeFileName(file.name)}`;
-  const app=appMod.getApp();
-  const storage=storageMod.getStorage(app);
-  const fileRef=storageMod.ref(storage,path);
-  const task=storageMod.uploadBytesResumable(fileRef,file,{contentType:file.type||'application/octet-stream'});
-  await new Promise((resolve,reject)=>{
-    let lastChange=Date.now();
-    const timeout=setInterval(()=>{
-      if(Date.now()-lastChange>15000){
-        clearInterval(timeout);
-        try{task.cancel()}catch{}
-        const snap=task.snapshot;
-        reject(new Error(`Firebase Storage no inició la transferencia. Estado: ${snap?.state||'desconocido'}, bytes: ${snap?.bytesTransferred||0}/${snap?.totalBytes||file.size}. Bucket: ${storage.app?.options?.storageBucket||'no configurado'}.`));
-      }
-    },1000);
-    task.on('state_changed',snapshot=>{
-      lastChange=Date.now();
-      const pct=snapshot.totalBytes?Math.round((snapshot.bytesTransferred/snapshot.totalBytes)*100):0;
-      if(typeof onProgress==='function')onProgress(pct,snapshot.bytesTransferred,snapshot.totalBytes);
-    },err=>{clearInterval(timeout);reject(err)},()=>{clearInterval(timeout);if(typeof onProgress==='function')onProgress(100,file.size,file.size);resolve()});
-  });
-  await storageMod.getDownloadURL(fileRef);
-  return path;
+  getDriveToken();
+  const folderId=await driveFolderFor(type,id,def);
+  const saved=await uploadDriveMultipart(folderId,file,onProgress);
+  return encodeDriveRef(saved);
 }
-async function deleteStoredFile(path){
-  if(!path||!session.uid||!String(path).startsWith(`accounts/${session.uid}/`))return;
-  try{const {appMod,storageMod}=await storageApi();await storageMod.deleteObject(storageMod.ref(storageMod.getStorage(appMod.getApp(),'gs://americaestuya.firebasestorage.app'),path))}catch(e){console.warn('No se pudo borrar el archivo anterior',e)}
+async function deleteStoredFile(value){
+  const ref=decodeDriveRef(value);
+  if(!ref)return;
+  try{await driveFetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(ref.id)}`,{method:'DELETE'})}
+  catch(e){console.warn('No se pudo borrar el archivo anterior de Google Drive',e)}
 }
-
-function storedFileName(path){
-  const raw=String(path||'').split('/').pop()||'archivo';
-  const clean=raw.replace(/^\d+_/,'');
+function storedFileName(value){
+  const ref=decodeDriveRef(value);
+  if(ref)return ref.name;
+  const raw=String(value||'').split('/').pop()||'archivo';
+  const clean=raw.replace(/^\\d+_/,'');
   try{return decodeURIComponent(clean)}catch{return clean}
 }
-function isStoredImage(path){
-  return /\.(?:jpg|jpeg|png|gif|webp|bmp)$/i.test(storedFileName(path));
+function isStoredImage(value){
+  const ref=decodeDriveRef(value);
+  if(ref?.mimeType?.startsWith('image/'))return true;
+  return /\\.(?:jpg|jpeg|png|gif|webp|bmp)$/i.test(storedFileName(value));
 }
-async function storedFileUrl(path){
-  if(!path)throw new Error('Archivo no encontrado.');
-  const {appMod,storageMod}=await storageApi();
-  const storage=storageMod.getStorage(appMod.getApp(),'gs://americaestuya.firebasestorage.app');
-  return storageMod.getDownloadURL(storageMod.ref(storage,path));
+async function storedFilePreviewUrl(value){
+  const ref=decodeDriveRef(value);
+  if(!ref)throw new Error('Este archivo usa el almacenamiento anterior y no está disponible en Google Drive.');
+  const r=await driveFetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(ref.id)}?alt=media`);
+  return URL.createObjectURL(await r.blob());
 }
-async function openStoredFile(path){
+async function storedFileUrl(value){
+  const ref=decodeDriveRef(value);
+  if(!ref)throw new Error('Este archivo usa el almacenamiento anterior y no está disponible en Google Drive.');
+  const r=await driveFetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(ref.id)}?fields=webViewLink,webContentLink`);
+  const meta=await r.json();
+  return meta.webViewLink||meta.webContentLink||storedFilePreviewUrl(value);
+}
+async function openStoredFile(value){
   const popup=window.open('about:blank','_blank');
   try{
-    const url=await storedFileUrl(path);
-    if(popup)popup.location.replace(url);
-    else window.location.href=url;
+    const url=await storedFileUrl(value);
+    if(popup)popup.location.replace(url);else window.location.href=url;
   }catch(err){
     if(popup)popup.close();
     throw err;
@@ -110,11 +202,9 @@ async function hydrateStoredFilePreviews(box){
   const previews=[...box.querySelectorAll('[data-file-preview-path]')];
   await Promise.all(previews.map(async img=>{
     try{
-      img.src=await storedFileUrl(img.dataset.filePreviewPath);
+      img.src=await storedFilePreviewUrl(img.dataset.filePreviewPath);
       img.hidden=false;
-    }catch(err){
-      console.warn('No se pudo cargar la vista previa del archivo',err);
-    }
+    }catch(err){console.warn('No se pudo cargar la vista previa del archivo',err)}
   }));
 }
 
