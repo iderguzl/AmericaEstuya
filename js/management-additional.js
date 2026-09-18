@@ -124,31 +124,61 @@ function driveXhrDiagnostic(xhr,eventName){
 }
 async function uploadDriveMultipart(folderId,file,onProgress){
   await verifyDriveApiAccess();
-  const boundary='-------AmericaEsTuya'+Date.now().toString(36);
-  const metadata={name:file.name,parents:[folderId]};
-  const body=new Blob([
-    `--${boundary}\\r\\nContent-Type: application/json; charset=UTF-8\\r\\n\\r\\n`,
-    JSON.stringify(metadata),
-    `\\r\\n--${boundary}\\r\\nContent-Type: ${file.type||'application/octet-stream'}\\r\\n\\r\\n`,
-    file,
-    `\\r\\n--${boundary}--`
-  ],{type:`multipart/related; boundary=${boundary}`});
 
   if(typeof onProgress==='function')onProgress(5,0,file.size,'uploading');
   let pct=5;
   const pulse=setInterval(()=>{
-    pct=Math.min(92,pct+(pct<60?7:pct<80?4:2));
+    pct=Math.min(90,pct+(pct<55?7:pct<75?4:2));
     if(typeof onProgress==='function')onProgress(pct,0,file.size,'uploading');
   },450);
 
+  let created=null;
   try{
-    const r=await driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType',{
-      method:'POST',
-      headers:{'Content-Type':`multipart/related; boundary=${boundary}`},
-      body
-    });
-    const out=await r.json();
-    if(!out?.id)throw new Error('Google Drive no devolvió fileId');
+    // 1) Subida simple de contenido. Es el flujo JavaScript oficial más sencillo
+    // y evita el multipart que estaba terminando con NETWORK ERROR/status=0.
+    let uploadResponse;
+    try{
+      uploadResponse=await driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=media&fields=id,name,mimeType,parents',{
+        method:'POST',
+        headers:{'Content-Type':file.type||'application/octet-stream'},
+        body:file
+      });
+    }catch(err){
+      throw new Error('Google Drive · subida del archivo: '+(err?.message||String(err)));
+    }
+
+    try{
+      created=await uploadResponse.json();
+    }catch{
+      throw new Error('Google Drive · la subida terminó pero no devolvió JSON válido');
+    }
+    if(!created?.id)throw new Error('Google Drive · la subida terminó pero no devolvió fileId');
+
+    if(typeof onProgress==='function')onProgress(94,file.size,file.size,'organizing');
+
+    // 2) Renombrar y mover el archivo a la carpeta correspondiente.
+    const currentParents=Array.isArray(created.parents)?created.parents.filter(Boolean):[];
+    const u=new URL(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(created.id)}`);
+    u.searchParams.set('addParents',folderId);
+    if(currentParents.length)u.searchParams.set('removeParents',currentParents.join(','));
+    u.searchParams.set('fields','id,name,mimeType,parents');
+
+    let metaResponse;
+    try{
+      metaResponse=await driveFetch(u.toString(),{
+        method:'PATCH',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:file.name})
+      });
+    }catch(err){
+      // Si el archivo se creó pero no pudo moverse, intentamos borrarlo
+      // para no dejar archivos huérfanos en la raíz de Drive.
+      try{await driveFetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(created.id)}`,{method:'DELETE'})}catch{}
+      throw new Error('Google Drive · organizar archivo: '+(err?.message||String(err)));
+    }
+
+    const out=await metaResponse.json();
+    if(!out?.id)throw new Error('Google Drive · no devolvió fileId al organizar el archivo');
     if(typeof onProgress==='function')onProgress(100,file.size,file.size,'done');
     return out;
   }finally{
@@ -280,6 +310,7 @@ async function saveAdditional(e,type,id,defs){
           if(progressBar)progressBar.style.width=`${pct}%`;
           if(progressText){
             if(state==='done')progressText.textContent='100% · Guardado en Google Drive';
+            else if(state==='organizing')progressText.textContent='94% · Organizando en Google Drive…';
             else progressText.textContent=`${pct}% · Subiendo…`;
           }
         });
