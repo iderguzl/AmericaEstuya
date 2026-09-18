@@ -12,7 +12,7 @@ style.textContent=`
 .additional-more{height:42px;border:0;border-radius:10px;background:#0b78c5;color:#fff;font-size:22px;font-weight:900;cursor:pointer;line-height:1}
 .additional-fields{display:grid;gap:12px}.additional-field-row{display:grid;grid-template-columns:minmax(130px,.8fr) minmax(0,1.2fr) 42px;gap:10px;align-items:center}.additional-remove{width:40px;height:40px;border:0;border-radius:10px;background:#fff1f1;color:#a63232;display:grid;place-items:center;cursor:pointer}.additional-remove:hover{background:#ffe3e3}.additional-remove svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .additional-field-name{font-weight:800;color:#315b7a}.additional-field-control input,.additional-field-control select,.additional-field-control textarea{width:100%;border:1px solid #cbdbe7;border-radius:10px;background:#fff;color:#173f61;padding:0 11px}.additional-field-control input,.additional-field-control select{height:42px}.additional-field-control textarea{min-height:86px;padding:10px 11px;resize:vertical}
-.additional-file-current{font-size:12px;color:#6b8295;margin-top:6px;overflow-wrap:anywhere}.additional-file-current b{color:#315b7a}.additional-file-open{border:0;background:transparent;color:#07589b;font-weight:800;text-decoration:underline;padding:0;cursor:pointer;max-width:100%;text-align:left;overflow-wrap:anywhere}
+.additional-file-current{font-size:12px;color:#6b8295;margin-top:8px;overflow-wrap:anywhere}.additional-file-current b{color:#315b7a}.additional-file-open{border:0;background:transparent;color:#07589b;font-weight:800;text-decoration:underline;padding:0;cursor:pointer;max-width:100%;text-align:left;overflow-wrap:anywhere}.additional-image-button{display:block;text-decoration:none;margin:0 0 8px}.additional-file-preview{display:block;max-width:180px;max-height:180px;border:1px solid #d7e4ed;border-radius:10px;object-fit:cover;background:#f7fafc}
 .additional-picker{border:0;border-radius:16px;padding:0;max-width:470px;width:calc(100% - 28px);box-shadow:0 24px 70px #102f4960}.additional-picker::backdrop{background:#102f4966}.additional-picker-box{padding:18px}.additional-picker-title{text-align:center;font-size:20px;font-weight:900;margin-bottom:12px}.additional-picker-list{display:grid;gap:8px;max-height:58vh;overflow:auto}.additional-picker-item{border:1px solid #dce7f0;background:#fff;border-radius:11px;padding:11px 12px;text-align:left;color:#173f61;cursor:pointer}.additional-picker-item:hover{background:#eef6fb}.additional-picker-name{font-weight:900}.additional-picker-meta{font-size:12px;color:#71879a;margin-top:3px}.additional-picker-close{margin-top:12px;width:100%;border:1px solid #cbdbe7;background:#fff;color:#28506f;border-radius:10px;padding:10px;font-weight:800;cursor:pointer}
 @media(max-width:760px){.additional-field-row{grid-template-columns:minmax(0,1fr) 42px}.additional-field-name{grid-column:1/-1;margin-bottom:-5px}.additional-field-control{grid-column:1}.additional-remove{grid-column:2;align-self:center}}
 `;
@@ -65,6 +65,43 @@ async function deleteStoredFile(path){
   try{const {appMod,storageMod}=await storageApi();await storageMod.deleteObject(storageMod.ref(storageMod.getStorage(appMod.getApp(),'gs://americaestuya.firebasestorage.app'),path))}catch(e){console.warn('No se pudo borrar el archivo anterior',e)}
 }
 
+function storedFileName(path){
+  const raw=String(path||'').split('/').pop()||'archivo';
+  const clean=raw.replace(/^\d+_/,'');
+  try{return decodeURIComponent(clean)}catch{return clean}
+}
+function isStoredImage(path){
+  return /\.(?:jpg|jpeg|png|gif|webp|bmp)$/i.test(storedFileName(path));
+}
+async function storedFileUrl(path){
+  if(!path)throw new Error('Archivo no encontrado.');
+  const {appMod,storageMod}=await storageApi();
+  const storage=storageMod.getStorage(appMod.getApp(),'gs://americaestuya.firebasestorage.app');
+  return storageMod.getDownloadURL(storageMod.ref(storage,path));
+}
+async function openStoredFile(path){
+  const popup=window.open('about:blank','_blank');
+  try{
+    const url=await storedFileUrl(path);
+    if(popup)popup.location.replace(url);
+    else window.location.href=url;
+  }catch(err){
+    if(popup)popup.close();
+    throw err;
+  }
+}
+async function hydrateStoredFilePreviews(box){
+  const previews=[...box.querySelectorAll('[data-file-preview-path]')];
+  await Promise.all(previews.map(async img=>{
+    try{
+      img.src=await storedFileUrl(img.dataset.filePreviewPath);
+      img.hidden=false;
+    }catch(err){
+      console.warn('No se pudo cargar la vista previa del archivo',err);
+    }
+  }));
+}
+
 async function loadDefinitions(){
   await ensureSession();
   const r=await fetch(`${DATA_API_URL}/igldata?select=id_sequence,id_parent,name,description,data_type,format,applies_to,display_order,is_active,deleted_at&deleted_at=is.null&order=display_order.asc,id_sequence.asc`,{headers:{Authorization:`Bearer ${session.token}`}});
@@ -82,7 +119,8 @@ function controlHtml(def,value){
     const opts=optionsFor(def);
     if(type==='FILE'){
       const accept=opts.map(o=>o.name).join(',');
-      const current=value?`<div class="additional-file-current"><b>Guardado:</b> <button type="button" class="additional-file-open" data-file-path="${val}" title="Abrir archivo">${esc(storedFileName(value))}</button></div>`:'';
+      const preview=value&&isStoredImage(value)?`<button type="button" class="additional-file-open additional-image-button" data-file-path="${val}" title="Abrir imagen"><img class="additional-file-preview" data-file-preview-path="${val}" alt="${esc(storedFileName(value))}" hidden></button>`:'';
+      const current=value?`<div class="additional-file-current">${preview}<b>Guardado:</b> <button type="button" class="additional-file-open" data-file-path="${val}" title="Abrir archivo">${esc(storedFileName(value))}</button></div>`:'';
       return `<input id="${id}" data-igldata="${def.id_sequence}" data-kind="FILE" data-current="${val}" type="file" ${accept?`accept="${esc(accept)}"`:''}>${current}`;
     }
     return `<select id="${id}" data-igldata="${def.id_sequence}"><option value=""></option>${opts.map(o=>`<option value="${esc(o.name)}" ${String(o.name)===String(value)?'selected':''}>${esc(o.name)}</option>`).join('')}</select>`;
@@ -107,7 +145,7 @@ async function removeAdditionalValue(type,id,def){
   chosen[type].delete(String(def.id_sequence));
   await renderFor(type);
 }
-async function renderFor(type){const box=document.getElementById(type==='CLIENT'?'clientAdditional':'userAdditional');if(!box)return;const id=selected[type];if(!id){box.innerHTML=`Selecciona un ${type==='CLIENT'?'cliente':'usuario'}.`;return}if(!allRows.length)await loadDefinitions();const defs=defsFor(type),values=await loadValues(type,id);Object.keys(values).forEach(k=>chosen[type].add(String(k)));const selectedDefs=defs.filter(d=>chosen[type].has(String(d.id_sequence)));const trash='<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5"/></svg>';box.innerHTML=`<form class="additional-form" data-additional-type="${type}"><div class="additional-picker-row"><div class="additional-picker-hint">Añadir dato adicional</div><button class="additional-more" type="button" title="Seleccionar dato" aria-label="Seleccionar dato">...</button></div>${selectedDefs.length?'<div class="toolstrip additional-toolstrip"><button class="tool-btn additional-save-top" type="submit" title="Guardar datos adicionales" aria-label="Guardar datos adicionales"><svg viewBox="0 0 24 24"><path d="M5 3h12l2 2v16H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></svg></button></div>':''}<div class="additional-fields">${selectedDefs.map(d=>`<div class="additional-field-row"><div class="additional-field-name">${esc(d.name)}</div><div class="additional-field-control">${controlHtml(d,values[String(d.id_sequence)])}</div><button type="button" class="additional-remove" data-remove-def="${d.id_sequence}" title="Quitar dato adicional" aria-label="Quitar ${esc(d.name)}">${trash}</button></div>`).join('')}</div><div class="status additional-status"></div></form>`;box.querySelector('.additional-more').onclick=()=>openPicker(type);box.querySelectorAll('.additional-file-open').forEach(b=>b.addEventListener('click',async()=>{try{await openStoredFile(b.dataset.filePath)}catch(err){console.error(err);const s=box.querySelector('.additional-status');if(s){s.textContent='ERROR REAL: '+(err?.message||String(err));s.className='status additional-status error'}}}));box.querySelectorAll('[data-remove-def]').forEach(b=>b.addEventListener('click',async()=>{const def=selectedDefs.find(d=>String(d.id_sequence)===String(b.dataset.removeDef));if(!def)return;try{await removeAdditionalValue(type,id,def)}catch(err){console.error(err);const s=box.querySelector('.additional-status');if(s){s.textContent='ERROR REAL: '+(err?.message||String(err));s.className='status additional-status error'}}}));box.querySelector('form').addEventListener('submit',e=>saveAdditional(e,type,id,selectedDefs))}
+async function renderFor(type){const box=document.getElementById(type==='CLIENT'?'clientAdditional':'userAdditional');if(!box)return;const id=selected[type];if(!id){box.innerHTML=`Selecciona un ${type==='CLIENT'?'cliente':'usuario'}.`;return}if(!allRows.length)await loadDefinitions();const defs=defsFor(type),values=await loadValues(type,id);Object.keys(values).forEach(k=>chosen[type].add(String(k)));const selectedDefs=defs.filter(d=>chosen[type].has(String(d.id_sequence)));const trash='<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5"/></svg>';box.innerHTML=`<form class="additional-form" data-additional-type="${type}"><div class="additional-picker-row"><div class="additional-picker-hint">Añadir dato adicional</div><button class="additional-more" type="button" title="Seleccionar dato" aria-label="Seleccionar dato">...</button></div>${selectedDefs.length?'<div class="toolstrip additional-toolstrip"><button class="tool-btn additional-save-top" type="submit" title="Guardar datos adicionales" aria-label="Guardar datos adicionales"><svg viewBox="0 0 24 24"><path d="M5 3h12l2 2v16H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></svg></button></div>':''}<div class="additional-fields">${selectedDefs.map(d=>`<div class="additional-field-row"><div class="additional-field-name">${esc(d.name)}</div><div class="additional-field-control">${controlHtml(d,values[String(d.id_sequence)])}</div><button type="button" class="additional-remove" data-remove-def="${d.id_sequence}" title="Quitar dato adicional" aria-label="Quitar ${esc(d.name)}">${trash}</button></div>`).join('')}</div><div class="status additional-status"></div></form>`;box.querySelector('.additional-more').onclick=()=>openPicker(type);hydrateStoredFilePreviews(box).catch(console.error);box.querySelectorAll('.additional-file-open').forEach(b=>b.addEventListener('click',async()=>{try{await openStoredFile(b.dataset.filePath)}catch(err){console.error(err);const s=box.querySelector('.additional-status');if(s){s.textContent='ERROR REAL: '+(err?.message||String(err));s.className='status additional-status error'}}}));box.querySelectorAll('[data-remove-def]').forEach(b=>b.addEventListener('click',async()=>{const def=selectedDefs.find(d=>String(d.id_sequence)===String(b.dataset.removeDef));if(!def)return;try{await removeAdditionalValue(type,id,def)}catch(err){console.error(err);const s=box.querySelector('.additional-status');if(s){s.textContent='ERROR REAL: '+(err?.message||String(err));s.className='status additional-status error'}}}));box.querySelector('form').addEventListener('submit',e=>saveAdditional(e,type,id,selectedDefs))}
 async function saveAdditional(e,type,id,defs){
   e.preventDefault();await ensureSession();const form=e.currentTarget,status=form.querySelector('.additional-status');status.textContent='';status.className='status additional-status';
   const table=type==='CLIENT'?'client_data':'user_data',key=type==='CLIENT'?'client_id':'user_id',pk=type==='CLIENT'?'client_data_id':'user_data_id';
@@ -132,8 +170,16 @@ async function saveAdditional(e,type,id,defs){
         const payload={[key]:Number(id),igldata_id:Number(def.id_sequence),value_text:value,is_active:true};const r=await fetch(`${DATA_API_URL}/${table}`,{method:'POST',headers:{Authorization:`Bearer ${session.token}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!r.ok)throw new Error(await r.text());
       }
     }
-    status.textContent='Guardado.';status.className='status additional-status success';await renderFor(type);setTimeout(()=>{const s=document.querySelector(`[data-additional-type="${type}"] .additional-status`);if(s){s.textContent='';s.className='status additional-status'}},1300);
-  }catch(err){console.error(err);status.textContent='ERROR REAL: '+(err?.message||String(err));status.className='status additional-status error'}
+    await renderFor(type);
+    const freshStatus=document.querySelector(`[data-additional-type="${type}"] .additional-status`);
+    if(freshStatus){freshStatus.textContent='Datos guardados.';freshStatus.className='status additional-status success'}
+    setTimeout(()=>{const s=document.querySelector(`[data-additional-type="${type}"] .additional-status`);if(s){s.textContent='';s.className='status additional-status'}},1800);
+  }catch(err){
+    console.error(err);
+    const visibleStatus=document.querySelector(`[data-additional-type="${type}"] .additional-status`)||status;
+    visibleStatus.textContent='ERROR REAL: '+(err?.message||String(err));
+    visibleStatus.className='status additional-status error'
+  }
 }
 window.addEventListener('management:entity-selected',e=>{if(e.detail?.type==='CLIENT'||e.detail?.type==='USER'){selected[e.detail.type]=e.detail.id;chosen[e.detail.type]=new Set();renderFor(e.detail.type).catch(console.error)}});
 let usersWired=false;function wireUsers(){const list=document.getElementById('usersList');if(!list||usersWired)return false;usersWired=true;list.addEventListener('click',e=>{const row=e.target.closest('.client-row');if(!row)return;selected.USER=row.dataset.id;chosen.USER=new Set();renderFor('USER').catch(console.error)});list.addEventListener('keydown',e=>{const row=e.target.closest('.client-row');if(row&&(e.key==='Enter'||e.key===' ')){selected.USER=row.dataset.id;chosen.USER=new Set();renderFor('USER').catch(console.error)}});return true}
