@@ -141,14 +141,17 @@ async function uploadDriveMultipart(folderId,file,onProgress){
     xhr.setRequestHeader('Authorization',`Bearer ${token}`);
     xhr.setRequestHeader('Content-Type',`multipart/related; boundary=${boundary}`);
     xhr.upload.onprogress=e=>{
-      if(e.lengthComputable&&typeof onProgress==='function')onProgress(Math.max(1,Math.min(99,Math.round(e.loaded/e.total*100))),e.loaded,e.total);
+      if(e.lengthComputable&&typeof onProgress==='function')onProgress(Math.max(1,Math.min(99,Math.round(e.loaded/e.total*100))),e.loaded,e.total,'uploading');
+    };
+    xhr.upload.onload=()=>{
+      if(typeof onProgress==='function')onProgress(100,file.size,file.size,'confirming');
     };
     xhr.onerror=()=>reject(new Error('Google Drive NETWORK ERROR: '+driveXhrDiagnostic(xhr,'error')));
     xhr.onabort=()=>reject(new Error('Google Drive ABORTADO: '+driveXhrDiagnostic(xhr,'abort')));
     xhr.ontimeout=()=>reject(new Error('Google Drive TIMEOUT: '+driveXhrDiagnostic(xhr,'timeout')));
     xhr.onload=()=>{
       if(xhr.status>=200&&xhr.status<300){
-        try{const out=JSON.parse(xhr.responseText);if(typeof onProgress==='function')onProgress(100,file.size,file.size);resolve(out)}
+        try{const out=JSON.parse(xhr.responseText);if(!out?.id)throw new Error('Google Drive no devolvió fileId');if(typeof onProgress==='function')onProgress(100,file.size,file.size,'done');resolve(out)}
         catch{reject(new Error('Google Drive devolvió una respuesta no válida: '+(xhr.responseText||'(vacía)')))}
       }else{
         if(xhr.status===401){
@@ -283,9 +286,13 @@ async function saveAdditional(e,type,id,defs){
         status.innerHTML=`<div>Subiendo ${esc(file.name)}...</div><div class="additional-progress"><div class="additional-progress-bar"></div></div><div class="additional-progress-text">0%</div>`;
         const progressBar=status.querySelector('.additional-progress-bar');
         const progressText=status.querySelector('.additional-progress-text');
-        value=await uploadAdditionalFile(type,id,def,file,pct=>{
+        value=await uploadAdditionalFile(type,id,def,file,(pct,loaded,total,state)=>{
           if(progressBar)progressBar.style.width=`${pct}%`;
-          if(progressText)progressText.textContent=`${pct}%`;
+          if(progressText){
+            if(state==='confirming')progressText.textContent='100% · Confirmando en Google Drive…';
+            else if(state==='done')progressText.textContent='100% · Confirmado';
+            else progressText.textContent=`${pct}%`;
+          }
         });
       }else{
         value=String(input.value??'').trim();
