@@ -16,6 +16,8 @@ const LOCAL_ACCESS_KEY = 'americaestuya_access_mode';
 const ACCESS_GUEST = 'guest';
 const SESSION_ACCESS_KEY = 'americaestuya_session_access';
 const RESUME_MAIN_KEY = 'americaestuya_resume_main';
+const DRIVE_ACCESS_TOKEN_KEY = 'americaestuya_google_drive_token';
+const DRIVE_ACCESS_TOKEN_EXP_KEY = 'americaestuya_google_drive_token_exp';
 
 async function initAmericaAuth() {
   const gate = document.getElementById('authGate');
@@ -57,7 +59,22 @@ async function initAmericaAuth() {
   await setPersistence(auth, browserLocalPersistence);
 
   const googleProvider = new GoogleAuthProvider();
+  googleProvider.addScope('https://www.googleapis.com/auth/drive.file');
   googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+  const rememberGoogleCredential = result => {
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (!credential?.accessToken) return;
+    sessionStorage.setItem(DRIVE_ACCESS_TOKEN_KEY, credential.accessToken);
+    // El token OAuth de Google suele durar alrededor de una hora.
+    // Lo tratamos como vencido un poco antes para evitar subidas a mitad de expiración.
+    sessionStorage.setItem(DRIVE_ACCESS_TOKEN_EXP_KEY, String(Date.now() + 50 * 60 * 1000));
+  };
+
+  const clearGoogleCredential = () => {
+    sessionStorage.removeItem(DRIVE_ACCESS_TOKEN_KEY);
+    sessionStorage.removeItem(DRIVE_ACCESS_TOKEN_EXP_KEY);
+  };
 
   const facebookProvider = new FacebookAuthProvider();
   facebookProvider.addScope('email');
@@ -227,6 +244,7 @@ async function initAmericaAuth() {
     status.textContent = 'Abriendo Google…';
     try {
       const result = await signInWithPopup(auth, googleProvider);
+      rememberGoogleCredential(result);
       if (result?.user) showConnected(result.user);
     } catch (e) { showError(e); }
   };
@@ -255,6 +273,7 @@ async function initAmericaAuth() {
   };
   if (connectedLogoutBtn) connectedLogoutBtn.onclick = async () => {
     sessionStorage.removeItem(RESUME_MAIN_KEY);
+    clearGoogleCredential();
     await signOut(auth);
     showLogin();
   };
@@ -264,6 +283,7 @@ async function initAmericaAuth() {
       leaveGuestMode();
       return;
     }
+    clearGoogleCredential();
     await signOut(auth);
     showLogin();
   };
