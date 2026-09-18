@@ -110,8 +110,21 @@ function decodeDriveRef(value){
     return x?.id?{id:String(x.id),name:String(x.n||'archivo'),mimeType:String(x.m||'application/octet-stream')}:null;
   }catch{return null}
 }
+async function verifyDriveApiAccess(){
+  // Esta llamada sencilla permite obtener el error HTTP real de Google
+  // (por ejemplo 401/403/API deshabilitada) antes de iniciar la subida XHR.
+  await driveFetch('https://www.googleapis.com/drive/v3/about?fields=user');
+}
+function driveXhrDiagnostic(xhr,eventName){
+  const parts=[`evento=${eventName}`,`status=${xhr.status||0}`,`readyState=${xhr.readyState}`];
+  if(xhr.statusText)parts.push(`statusText=${xhr.statusText}`);
+  if(xhr.responseText)parts.push(`respuesta=${xhr.responseText}`);
+  if(typeof navigator!=='undefined'&&navigator.onLine===false)parts.push('navegador=sin conexión');
+  return parts.join(' | ');
+}
 async function uploadDriveMultipart(folderId,file,onProgress){
   const token=getDriveToken();
+  await verifyDriveApiAccess();
   const boundary='-------AmericaEsTuya'+Date.now().toString(36);
   const metadata={name:file.name,parents:[folderId]};
   const body=new Blob([
@@ -124,22 +137,25 @@ async function uploadDriveMultipart(folderId,file,onProgress){
   return new Promise((resolve,reject)=>{
     const xhr=new XMLHttpRequest();
     xhr.open('POST','https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType');
+    xhr.timeout=90000;
     xhr.setRequestHeader('Authorization',`Bearer ${token}`);
     xhr.setRequestHeader('Content-Type',`multipart/related; boundary=${boundary}`);
     xhr.upload.onprogress=e=>{
       if(e.lengthComputable&&typeof onProgress==='function')onProgress(Math.max(1,Math.min(99,Math.round(e.loaded/e.total*100))),e.loaded,e.total);
     };
-    xhr.onerror=()=>reject(new Error('No se pudo conectar con Google Drive.'));
+    xhr.onerror=()=>reject(new Error('Google Drive NETWORK ERROR: '+driveXhrDiagnostic(xhr,'error')));
+    xhr.onabort=()=>reject(new Error('Google Drive ABORTADO: '+driveXhrDiagnostic(xhr,'abort')));
+    xhr.ontimeout=()=>reject(new Error('Google Drive TIMEOUT: '+driveXhrDiagnostic(xhr,'timeout')));
     xhr.onload=()=>{
       if(xhr.status>=200&&xhr.status<300){
         try{const out=JSON.parse(xhr.responseText);if(typeof onProgress==='function')onProgress(100,file.size,file.size);resolve(out)}
-        catch{reject(new Error('Google Drive devolvió una respuesta no válida.'))}
+        catch{reject(new Error('Google Drive devolvió una respuesta no válida: '+(xhr.responseText||'(vacía)')))}
       }else{
         if(xhr.status===401){
           sessionStorage.removeItem(DRIVE_ACCESS_TOKEN_KEY);
           sessionStorage.removeItem(DRIVE_ACCESS_TOKEN_EXP_KEY);
         }
-        reject(new Error(`Google Drive: ${xhr.status} ${xhr.responseText||xhr.statusText}`));
+        reject(new Error(`Google Drive HTTP ${xhr.status}: ${xhr.responseText||xhr.statusText||'sin detalle devuelto por Google'}`));
       }
     };
     if(typeof onProgress==='function')onProgress(0,0,file.size);
