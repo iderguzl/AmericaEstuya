@@ -390,7 +390,7 @@ window.managementSaveAdditional=async function(type){
   const t=String(type||'').toUpperCase();
   if(t!=='CLIENT'&&t!=='USER')return false;
   const id=selected[t];
-  const form=document.querySelector(\`[data-additional-type="\${t}"]\`);
+  const form=document.querySelector(`[data-additional-type="${t}"]`);
   if(!id||!form)return false;
   if(!allRows.length)await loadDefinitions();
   const defs=defsFor(t).filter(d=>chosen[t].has(String(d.id_sequence)));
@@ -405,12 +405,12 @@ function downloadExport(blob,name){
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 function exportSafe(v){return String(v??'').replace(/[\\/:*?"<>|]+/g,'_').trim()||'registro'}
-function exportTitle(type,id){return \`DATOS DEL \${type==='CLIENT'?'CLIENTE':type==='USER'?'USUARIO':'CUENTA'} \${id??''}\`.trim()}
+function exportTitle(type,id){return `DATOS DEL ${type==='CLIENT'?'CLIENTE':type==='USER'?'USUARIO':'CUENTA'} ${id??''}`.trim()}
 function dataUrlFromBlob(blob){return new Promise((resolve,reject)=>{const fr=new FileReader();fr.onload=()=>resolve(fr.result);fr.onerror=reject;fr.readAsDataURL(blob)})}
 async function storedImageData(value){
   const ref=decodeDriveRef(value);
   if(!ref)return null;
-  const r=await driveFetch(\`https://www.googleapis.com/drive/v3/files/\${encodeURIComponent(ref.id)}?alt=media\`);
+  const r=await driveFetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(ref.id)}?alt=media`);
   const blob=await r.blob();
   return {dataUrl:await dataUrlFromBlob(blob),mime:blob.type||ref.mimeType||'image/jpeg',name:ref.name||storedFileName(value)};
 }
