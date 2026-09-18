@@ -13,6 +13,7 @@ style.textContent=`
 .additional-saving{display:block!important;background:#eef6ff;color:#07589b;font-weight:800}.additional-progress{margin-top:8px;height:10px;border-radius:999px;background:#d9e8f5;overflow:hidden}.additional-progress-bar{height:100%;width:0%;background:#0b78c5;transition:width .15s linear}.additional-progress-text{margin-top:6px;font-size:12px;font-weight:800;color:#315b7a}.additional-fields{display:grid;gap:12px}.additional-field-row{display:grid;grid-template-columns:minmax(130px,.8fr) minmax(0,1.2fr) 42px;gap:10px;align-items:center}.additional-remove{width:40px;height:40px;border:0;border-radius:10px;background:#fff1f1;color:#a63232;display:grid;place-items:center;cursor:pointer}.additional-remove:hover{background:#ffe3e3}.additional-remove svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .additional-field-name{font-weight:800;color:#315b7a}.additional-field-control input,.additional-field-control select,.additional-field-control textarea{width:100%;border:1px solid #cbdbe7;border-radius:10px;background:#fff;color:#173f61;padding:0 11px}.additional-field-control input,.additional-field-control select{height:42px}.additional-field-control textarea{min-height:86px;padding:10px 11px;resize:vertical}
 .additional-file-current{font-size:12px;color:#6b8295;margin-top:8px;overflow-wrap:anywhere}.additional-file-current b{color:#315b7a}.additional-file-open{border:0;background:transparent;color:#07589b;font-weight:800;text-decoration:underline;padding:0;cursor:pointer;max-width:100%;text-align:left;overflow-wrap:anywhere}.additional-image-button{display:block;text-decoration:none;margin:0 0 8px}.additional-file-preview{display:block;max-width:180px;max-height:180px;border:1px solid #d7e4ed;border-radius:10px;object-fit:cover;background:#f7fafc}
+.additional-viewer{position:fixed;inset:0;z-index:9999;background:#0b2030e8;display:none;align-items:center;justify-content:center;padding:18px}.additional-viewer.open{display:flex}.additional-viewer-box{position:relative;width:min(960px,100%);height:min(86vh,900px);background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 24px 70px #0008;display:flex;flex-direction:column}.additional-viewer-head{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #dce7f0}.additional-viewer-name{font-weight:900;color:#173f61;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}.additional-viewer-close{width:40px;height:40px;border:0;border-radius:10px;background:#eef5fb;color:#07589b;font-size:24px;font-weight:900;cursor:pointer}.additional-viewer-body{flex:1;min-height:0;display:grid;place-items:center;background:#101820}.additional-viewer-body img{max-width:100%;max-height:100%;object-fit:contain}.additional-viewer-body iframe{width:100%;height:100%;border:0;background:#fff}
 .additional-picker{border:0;border-radius:16px;padding:0;max-width:470px;width:calc(100% - 28px);box-shadow:0 24px 70px #102f4960}.additional-picker::backdrop{background:#102f4966}.additional-picker-box{padding:18px}.additional-picker-title{text-align:center;font-size:20px;font-weight:900;margin-bottom:12px}.additional-picker-list{display:grid;gap:8px;max-height:58vh;overflow:auto}.additional-picker-item{border:1px solid #dce7f0;background:#fff;border-radius:11px;padding:11px 12px;text-align:left;color:#173f61;cursor:pointer}.additional-picker-item:hover{background:#eef6fb}.additional-picker-name{font-weight:900}.additional-picker-meta{font-size:12px;color:#71879a;margin-top:3px}.additional-picker-close{margin-top:12px;width:100%;border:1px solid #cbdbe7;background:#fff;color:#28506f;border-radius:10px;padding:10px;font-weight:800;cursor:pointer}
 @media(max-width:760px){.additional-field-row{grid-template-columns:minmax(0,1fr) 42px}.additional-field-name{grid-column:1/-1;margin-bottom:-5px}.additional-field-control{grid-column:1}.additional-remove{grid-column:2;align-self:center}}
 `;
@@ -125,11 +126,18 @@ function driveXhrDiagnostic(xhr,eventName){
 async function uploadDriveMultipart(folderId,file,onProgress){
   await verifyDriveApiAccess();
 
-  if(typeof onProgress==='function')onProgress(5,0,file.size,'uploading');
+  let shownPct=0;
+  const reportProgress=(pct,loaded,total,state)=>{
+    const next=Math.max(shownPct,Math.min(100,Number(pct)||0));
+    shownPct=next;
+    if(typeof onProgress==='function')onProgress(next,loaded,total,state);
+  };
+
+  reportProgress(5,0,file.size,'uploading');
   let pct=5;
   const pulse=setInterval(()=>{
     pct=Math.min(90,pct+(pct<55?7:pct<75?4:2));
-    if(typeof onProgress==='function')onProgress(pct,0,file.size,'uploading');
+    reportProgress(pct,0,file.size,'uploading');
   },450);
 
   let created=null;
@@ -154,7 +162,7 @@ async function uploadDriveMultipart(folderId,file,onProgress){
     }
     if(!created?.id)throw new Error('Google Drive · la subida terminó pero no devolvió fileId');
 
-    if(typeof onProgress==='function')onProgress(94,file.size,file.size,'organizing');
+    reportProgress(94,file.size,file.size,'organizing');
 
     // 2) Renombrar y mover el archivo a la carpeta correspondiente.
     const currentParents=Array.isArray(created.parents)?created.parents.filter(Boolean):[];
@@ -179,7 +187,7 @@ async function uploadDriveMultipart(folderId,file,onProgress){
 
     const out=await metaResponse.json();
     if(!out?.id)throw new Error('Google Drive · no devolvió fileId al organizar el archivo');
-    if(typeof onProgress==='function')onProgress(100,file.size,file.size,'done');
+    reportProgress(100,file.size,file.size,'done');
     return out;
   }finally{
     clearInterval(pulse);
@@ -227,15 +235,56 @@ async function storedFileUrl(value){
   const meta=await r.json();
   return meta.webViewLink||meta.webContentLink||storedFilePreviewUrl(value);
 }
+function ensureAdditionalViewer(){
+  let viewer=document.getElementById('additionalFileViewer');
+  if(viewer)return viewer;
+  viewer=document.createElement('div');
+  viewer.id='additionalFileViewer';
+  viewer.className='additional-viewer';
+  viewer.setAttribute('role','dialog');
+  viewer.setAttribute('aria-modal','true');
+  viewer.innerHTML='<div class="additional-viewer-box"><div class="additional-viewer-head"><div class="additional-viewer-name"></div><button type="button" class="additional-viewer-close" aria-label="Cerrar">×</button></div><div class="additional-viewer-body"></div></div>';
+  document.body.appendChild(viewer);
+  const close=()=>{
+    viewer.classList.remove('open');
+    const body=viewer.querySelector('.additional-viewer-body');
+    const url=body.dataset.objectUrl;
+    if(url){URL.revokeObjectURL(url);delete body.dataset.objectUrl}
+    body.innerHTML='';
+  };
+  viewer.querySelector('.additional-viewer-close').onclick=close;
+  viewer.addEventListener('click',e=>{if(e.target===viewer)close()});
+  return viewer;
+}
 async function openStoredFile(value){
-  const popup=window.open('about:blank','_blank');
-  try{
-    const url=await storedFileUrl(value);
-    if(popup)popup.location.replace(url);else window.location.href=url;
-  }catch(err){
-    if(popup)popup.close();
-    throw err;
+  const ref=decodeDriveRef(value);
+  if(!ref)throw new Error('Este archivo usa el almacenamiento anterior y no está disponible en Google Drive.');
+  const mime=String(ref.mimeType||'').toLowerCase();
+  if(mime.startsWith('image/')||mime==='application/pdf'){
+    const viewer=ensureAdditionalViewer();
+    const body=viewer.querySelector('.additional-viewer-body');
+    viewer.querySelector('.additional-viewer-name').textContent=ref.name||'Archivo';
+    body.innerHTML='<div style="color:#fff;font-weight:800">Cargando…</div>';
+    viewer.classList.add('open');
+    try{
+      const r=await driveFetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(ref.id)}?alt=media`);
+      const objectUrl=URL.createObjectURL(await r.blob());
+      body.dataset.objectUrl=objectUrl;
+      body.innerHTML=mime.startsWith('image/')
+        ? `<img src="${objectUrl}" alt="">`
+        : `<iframe src="${objectUrl}" title="${esc(ref.name||'PDF')}"></iframe>`;
+      return;
+    }catch(err){
+      viewer.classList.remove('open');
+      body.innerHTML='';
+      throw err;
+    }
   }
+
+  // Para otros tipos no abrimos una pestaña en blanco antes de la petición.
+  // Así Android no recarga la página de Gestión al cambiar de pestaña.
+  const url=await storedFileUrl(value);
+  window.location.assign(url);
 }
 async function hydrateStoredFilePreviews(box){
   const previews=[...box.querySelectorAll('[data-file-preview-path]')];
