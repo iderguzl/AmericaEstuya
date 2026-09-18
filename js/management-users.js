@@ -105,7 +105,6 @@ function injectUsersUI() {
         </div>
       </div>
       <div class="form-actions">
-        <button class="primary" type="submit">Guardar</button>
         <button id="cancelUserBtn" class="secondary" type="button">Cancelar</button>
       </div>
     </form>
@@ -423,12 +422,46 @@ function handleUserTool(action, button) {
     return;
   }
 
+  if (action === 'save') {
+    let did = false;
+    if ($('userForm')?.classList.contains('open')) {
+      $('userForm').requestSubmit();
+      did = true;
+    }
+    if (selectedUserId && typeof window.managementSaveAdditional === 'function') {
+      window.managementSaveAdditional('USER');
+      did = true;
+    }
+    if (!did) setUserMessage('No hay cambios para guardar.', 'error');
+    return;
+  }
+
   if (action === 'print') {
     window.print();
     return;
   }
 
-  if (action === 'export') exportUsers();
+  if (action === 'export') {
+    const user = selectedUser();
+    if (!user) {
+      setUserMessage('Selecciona un usuario.', 'error');
+      return;
+    }
+    if (typeof window.managementOpenExportMenu === 'function') {
+      window.managementOpenExportMenu(button, 'users', {
+        type: 'USER',
+        id: user.user_id,
+        parent: {
+          Nombre: user.name || '',
+          Correo: user.email || '',
+          Telefono: user.phone || '',
+          Estado: user.is_active === false ? 'Inactivo' : 'Activo'
+        }
+      });
+    } else {
+      exportUsers();
+    }
+  }
 }
 
 function wireUsersToolbar() {
