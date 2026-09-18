@@ -54,16 +54,17 @@ async function uploadAdditionalFile(type,id,def,file,onProgress){
   const folder=type==='CLIENT'?'clients':'users';
   const path=`accounts/${session.uid}/${folder}/${Number(id)}/${Number(def.id_sequence)}/${Date.now()}_${safeFileName(file.name)}`;
   const app=appMod.getApp();
-  const storage=storageMod.getStorage(app,'gs://americaestuya.firebasestorage.app');
+  const storage=storageMod.getStorage(app);
   const fileRef=storageMod.ref(storage,path);
   const task=storageMod.uploadBytesResumable(fileRef,file,{contentType:file.type||'application/octet-stream'});
   await new Promise((resolve,reject)=>{
     let lastChange=Date.now();
     const timeout=setInterval(()=>{
-      if(Date.now()-lastChange>60000){
+      if(Date.now()-lastChange>15000){
         clearInterval(timeout);
         try{task.cancel()}catch{}
-        reject(new Error('La subida tardó demasiado tiempo. Intente nuevamente.'));
+        const snap=task.snapshot;
+        reject(new Error(`Firebase Storage no inició la transferencia. Estado: ${snap?.state||'desconocido'}, bytes: ${snap?.bytesTransferred||0}/${snap?.totalBytes||file.size}. Bucket: ${storage.app?.options?.storageBucket||'no configurado'}.`));
       }
     },1000);
     task.on('state_changed',snapshot=>{
