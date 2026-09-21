@@ -24,14 +24,19 @@ document.querySelectorAll('.nav a').forEach(link=>link.addEventListener('click',
 function setClientMessage(message,type=''){clientStatus.textContent=message||'';clientStatus.className='status'+(type?' '+type:'')}
 function normalizeName(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase()}
 async function loadBeneficiaryTypes(){
-  if(beneficiaryTypeDef&&beneficiaryTypeOptions.length)return;
-  const r=await fetch(`${DATA_API_URL}/igldata?select=id_sequence,id_parent,name,is_active,deleted_at&deleted_at=is.null&order=id_sequence.asc`,{headers:{Authorization:`Bearer ${currentToken}`}});
-  if(!r.ok)throw new Error(await r.text());
-  const rows=await r.json();
-  beneficiaryTypeDef=rows.find(x=>normalizeName(x.name)==='TIPO RELACION'&&x.is_active!==false)||null;
-  beneficiaryTypeOptions=beneficiaryTypeDef?rows.filter(x=>String(x.id_parent)===String(beneficiaryTypeDef.id_sequence)&&x.is_active!==false):[];
+  if(!beneficiaryTypeDef||!beneficiaryTypeOptions.length){
+    const r=await fetch(`${DATA_API_URL}/igldata?select=id_sequence,id_parent,name,is_active,deleted_at&deleted_at=is.null&order=id_sequence.asc`,{headers:{Authorization:`Bearer ${currentToken}`}});
+    if(!r.ok)throw new Error(await r.text());
+    const rows=await r.json();
+    beneficiaryTypeDef=rows.find(x=>normalizeName(x.name)==='TIPO RELACION'&&x.is_active!==false)||null;
+    beneficiaryTypeOptions=beneficiaryTypeDef?rows.filter(x=>String(x.id_parent)===String(beneficiaryTypeDef.id_sequence)&&x.is_active!==false):[];
+  }
   const sel=document.getElementById('clientCategory');
-  if(sel)sel.innerHTML='<option value="">Seleccione…</option>'+beneficiaryTypeOptions.map(x=>`<option value="${escapeHtml(x.name)}">${escapeHtml(x.name)}</option>`).join('');
+  if(sel){
+    const previous=sel.value;
+    sel.innerHTML='<option value="">Seleccione…</option>'+beneficiaryTypeOptions.map(x=>`<option value="${escapeHtml(x.name)}">${escapeHtml(x.name)}</option>`).join('');
+    if([...sel.options].some(o=>o.value===previous))sel.value=previous;
+  }
 }
 async function loadClientCategory(clientId){
   if(!clientId||!beneficiaryTypeDef)return '';
