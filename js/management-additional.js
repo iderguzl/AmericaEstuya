@@ -1,6 +1,6 @@
 const DATA_API_URL='https://ep-muddy-fire-awvetyx3.apirest.c-12.us-east-1.aws.neon.tech/americaestuya/rest/v1';
 let session={token:'',accountId:null,uid:''};
-let allRows=[],selected={CLIENT:null,USER:null},chosen={CLIENT:new Set(),USER:new Set()},chosenOwner={CLIENT:null,USER:null};
+let allRows=[],selected={CLIENT:null,USER:null,ACTIVITY:null},chosen={CLIENT:new Set(),USER:new Set(),ACTIVITY:new Set()},chosenOwner={CLIENT:null,USER:null,ACTIVITY:null};
 let storageModulePromise=null;
 const esc=v=>String(v??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]));
 const norm=t=>({BOOLEAN:'LIST',LONG_TEXT:'MEMO',EMAIL:'TEXT',INTEGER:'NUMBER',DECIMAL:'NUMBER',DATE_DMY:'DATETIME',DATE_MDY:'DATETIME',TIME_12:'DATETIME',TIME_24:'DATETIME'}[String(t||'').toUpperCase()]||String(t||'TEXT').toUpperCase());
@@ -94,9 +94,9 @@ async function ensureDriveFolder(name,parentId){
 async function driveFolderFor(type,id,def){
   let parent=await ensureDriveFolder(DRIVE_ROOT_NAME);
   parent=await ensureDriveFolder('Gestión',parent);
-  const section=type==='CLIENT'?'Clientes':type==='USER'?'Usuarios':'Cuenta';
+  const section=type==='CLIENT'?'Clientes':type==='USER'?'Usuarios':type==='ACTIVITY'?'Actividades':'Cuenta';
   parent=await ensureDriveFolder(section,parent);
-  const entityName=type==='CLIENT'?`Cliente_${Number(id)}`:type==='USER'?`Usuario_${Number(id)}`:`Cuenta_${Number(id)}`;
+  const entityName=type==='CLIENT'?`Cliente_${Number(id)}`:type==='USER'?`Usuario_${Number(id)}`:type==='ACTIVITY'?`Actividad_${Number(id)}`:`Cuenta_${Number(id)}`;
   parent=await ensureDriveFolder(entityName,parent);
   return ensureDriveFolder(`${Number(def.id_sequence)}_${safeFileName(def.name)}`,parent);
 }
@@ -302,11 +302,11 @@ async function loadDefinitions(){
   if(!r.ok)throw new Error(await r.text());allRows=await r.json();
 }
 function activeRow(r){return r.deleted_at==null&&(r.status?String(r.status).toUpperCase()==='A':r.is_active!==false)}
-function applies(r,type){const a=String(r.applies_to||'ALL').toUpperCase();if(type==='CLIENT')return ['ALL','CLIENT','T','C'].includes(a);if(type==='USER')return ['ALL','USER','T','U'].includes(a);return ['ALL','ACCOUNT','T','A'].includes(a)}
-function rootRows(){return allRows.filter(r=>r.id_parent==null&&activeRow(r)&&['ADDITIONAL_FIELDS','ACCOUNT_FIELDS','CLIENT_FIELDS','USER_FIELDS'].includes(String(r.name||'').toUpperCase()))}
-function defsFor(type){const roots=rootRows();const allowedRootIds=new Set(roots.filter(r=>{const n=String(r.name||'').toUpperCase();return n==='ADDITIONAL_FIELDS'||(type==='CLIENT'&&n==='CLIENT_FIELDS')||(type==='USER'&&n==='USER_FIELDS')}).map(r=>String(r.id_sequence)));const seen=new Set();return allRows.filter(r=>allowedRootIds.has(String(r.id_parent))&&activeRow(r)&&applies(r,type)).filter(r=>{const k=String(r.name||'').trim().toUpperCase();if(seen.has(k))return false;seen.add(k);return true}).sort((a,b)=>(Number(a.display_order||0)-Number(b.display_order||0))||(Number(a.id_sequence)-Number(b.id_sequence)))}
+function applies(r,type){const a=String(r.applies_to||'ALL').toUpperCase();if(type==='CLIENT')return ['ALL','CLIENT','T','C'].includes(a);if(type==='USER')return ['ALL','USER','T','U'].includes(a);if(type==='ACTIVITY')return ['ALL','ACTIVITY','T'].includes(a);return ['ALL','ACCOUNT','T','A'].includes(a)}
+function rootRows(){return allRows.filter(r=>r.id_parent==null&&activeRow(r)&&['ADDITIONAL_FIELDS','ACCOUNT_FIELDS','CLIENT_FIELDS','USER_FIELDS','ACTIVITY_FIELDS'].includes(String(r.name||'').toUpperCase()))}
+function defsFor(type){const roots=rootRows();const allowedRootIds=new Set(roots.filter(r=>{const n=String(r.name||'').toUpperCase();return n==='ADDITIONAL_FIELDS'||(type==='CLIENT'&&n==='CLIENT_FIELDS')||(type==='USER'&&n==='USER_FIELDS')||(type==='ACTIVITY'&&n==='ACTIVITY_FIELDS')}).map(r=>String(r.id_sequence)));const seen=new Set();return allRows.filter(r=>allowedRootIds.has(String(r.id_parent))&&activeRow(r)&&applies(r,type)).filter(r=>{const k=String(r.name||'').trim().toUpperCase();if(seen.has(k))return false;seen.add(k);return true}).sort((a,b)=>(Number(a.display_order||0)-Number(b.display_order||0))||(Number(a.id_sequence)-Number(b.id_sequence)))}
 function optionsFor(def){return allRows.filter(r=>String(r.id_parent)===String(def.id_sequence)&&activeRow(r)).sort((a,b)=>(Number(a.display_order||0)-Number(b.display_order||0))||(Number(a.id_sequence)-Number(b.id_sequence)))}
-async function loadValues(type,id){if(!id)return{};await ensureSession();const table=type==='CLIENT'?'client_data':'user_data',key=type==='CLIENT'?'client_id':'user_id';const r=await fetch(`${DATA_API_URL}/${table}?select=igldata_id,value_text,is_active&${key}=eq.${encodeURIComponent(id)}`,{headers:{Authorization:`Bearer ${session.token}`}});if(!r.ok)throw new Error(await r.text());const rows=await r.json();return Object.fromEntries(rows.filter(activeRow).map(x=>[String(x.igldata_id),x.value_text??'']))}
+async function loadValues(type,id){if(!id)return{};await ensureSession();const table=type==='CLIENT'?'client_data':type==='USER'?'user_data':'activity_data',key=type==='CLIENT'?'client_id':type==='USER'?'user_id':'activity_id';const r=await fetch(`${DATA_API_URL}/${table}?select=igldata_id,value_text,is_active&${key}=eq.${encodeURIComponent(id)}`,{headers:{Authorization:`Bearer ${session.token}`}});if(!r.ok)throw new Error(await r.text());const rows=await r.json();return Object.fromEntries(rows.filter(activeRow).map(x=>[String(x.igldata_id),x.value_text??'']))}
 function controlHtml(def,value){
   const type=norm(def.data_type),id=`add_${def.id_sequence}`,val=esc(value||'');
   if(type==='LIST'||type==='FILE'){
@@ -328,7 +328,7 @@ function ensureDialog(type){const id=`additionalPicker${type}`;let dlg=document.
 function openPicker(type){const defs=defsFor(type),dlg=ensureDialog(type),already=chosen[type];dlg.innerHTML=`<div class="additional-picker-box"><div class="additional-picker-title">Seleccionar dato</div><div class="additional-picker-list">${defs.filter(d=>!already.has(String(d.id_sequence))).map(d=>`<button type="button" class="additional-picker-item" data-def="${d.id_sequence}"><div class="additional-picker-name">${esc(d.name)}</div><div class="additional-picker-meta">${esc(d.description||'')} ${d.format&&d.format!=='TEXT'?' · '+esc(d.format):''}</div></button>`).join('')||'<div class="no-items">No hay más datos disponibles.</div>'}</div><button type="button" class="additional-picker-close">Cerrar</button></div>`;dlg.querySelectorAll('[data-def]').forEach(b=>b.addEventListener('click',()=>{already.add(String(b.dataset.def));dlg.close();renderFor(type).catch(console.error)}));dlg.querySelector('.additional-picker-close').onclick=()=>dlg.close();dlg.showModal()}
 async function removeAdditionalValue(type,id,def){
   await ensureSession();
-  const table=type==='CLIENT'?'client_data':'user_data',key=type==='CLIENT'?'client_id':'user_id',pk=type==='CLIENT'?'client_data_id':'user_data_id';
+  const table=type==='CLIENT'?'client_data':type==='USER'?'user_data':'activity_data',key=type==='CLIENT'?'client_id':type==='USER'?'user_id':'activity_id',pk=type==='CLIENT'?'client_data_id':type==='USER'?'user_data_id':'activity_data_id';
   const r=await fetch(`${DATA_API_URL}/${table}?select=${pk},value_text&${key}=eq.${encodeURIComponent(id)}&igldata_id=eq.${def.id_sequence}&is_active=eq.true`,{headers:{Authorization:`Bearer ${session.token}`}});
   if(!r.ok)throw new Error(await r.text());
   const rows=await r.json();
@@ -339,10 +339,10 @@ async function removeAdditionalValue(type,id,def){
   chosen[type].delete(String(def.id_sequence));
   await renderFor(type);
 }
-async function renderFor(type){const box=document.getElementById(type==='CLIENT'?'clientAdditional':'userAdditional');if(!box)return;const id=selected[type];if(!id){chosen[type]=new Set();chosenOwner[type]=null;box.innerHTML=`Selecciona un ${type==='CLIENT'?'beneficiario':'usuario'}.`;return}if(String(chosenOwner[type])!==String(id)){chosen[type]=new Set();chosenOwner[type]=String(id)}if(!allRows.length)await loadDefinitions();const defs=defsFor(type),values=await loadValues(type,id);if(String(selected[type])!==String(id))return;Object.keys(values).forEach(k=>chosen[type].add(String(k)));if(type==='CLIENT'){const relationDef=defs.find(d=>String(d.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase()==='TIPO RELACION');if(relationDef)chosen[type].add(String(relationDef.id_sequence))}const selectedDefs=defs.filter(d=>chosen[type].has(String(d.id_sequence)));const trash='<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5"/></svg>';box.innerHTML=`<form class="additional-form" data-additional-type="${type}"><div class="additional-picker-row"><div class="additional-picker-hint">Añadir dato adicional</div><button class="additional-more" type="button" title="Seleccionar dato" aria-label="Seleccionar dato">...</button></div><div class="additional-fields">${selectedDefs.map(d=>`<div class="additional-field-row"><div class="additional-field-name">${esc(d.name)}</div><div class="additional-field-control">${controlHtml(d,values[String(d.id_sequence)])}</div><button type="button" class="additional-remove" data-remove-def="${d.id_sequence}" title="Quitar dato adicional" aria-label="Quitar ${esc(d.name)}">${trash}</button></div>`).join('')}</div><div class="status additional-status"></div></form>`;box.querySelector('.additional-more').onclick=()=>openPicker(type);hydrateStoredFilePreviews(box).catch(console.error);box.querySelectorAll('.additional-file-open').forEach(b=>b.addEventListener('click',async()=>{try{await openStoredFile(b.dataset.filePath)}catch(err){console.error(err);const s=box.querySelector('.additional-status');if(s){s.textContent='ERROR REAL: '+(err?.message||String(err));s.className='status additional-status error'}}}));box.querySelectorAll('[data-remove-def]').forEach(b=>b.addEventListener('click',async()=>{const def=selectedDefs.find(d=>String(d.id_sequence)===String(b.dataset.removeDef));if(!def)return;try{await removeAdditionalValue(type,id,def)}catch(err){console.error(err);const s=box.querySelector('.additional-status');if(s){s.textContent='ERROR REAL: '+(err?.message||String(err));s.className='status additional-status error'}}}));const form=box.querySelector('form');form.addEventListener('submit',e=>saveAdditional(e,type,id,selectedDefs))}
+async function renderFor(type){const box=document.getElementById(type==='CLIENT'?'clientAdditional':type==='USER'?'userAdditional':'activityAdditional');if(!box)return;const id=selected[type];if(!id){chosen[type]=new Set();chosenOwner[type]=null;box.innerHTML=`Selecciona ${type==='CLIENT'?'un beneficiario':type==='USER'?'un usuario':'una actividad'}.`;return}if(String(chosenOwner[type])!==String(id)){chosen[type]=new Set();chosenOwner[type]=String(id)}if(!allRows.length)await loadDefinitions();const defs=defsFor(type),values=await loadValues(type,id);if(String(selected[type])!==String(id))return;Object.keys(values).forEach(k=>chosen[type].add(String(k)));if(type==='CLIENT'){const relationDef=defs.find(d=>String(d.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase()==='TIPO RELACION');if(relationDef)chosen[type].add(String(relationDef.id_sequence))}const selectedDefs=defs.filter(d=>chosen[type].has(String(d.id_sequence)));const trash='<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5"/></svg>';box.innerHTML=`<form class="additional-form" data-additional-type="${type}"><div class="additional-picker-row"><div class="additional-picker-hint">Añadir dato adicional</div><button class="additional-more" type="button" title="Seleccionar dato" aria-label="Seleccionar dato">...</button></div><div class="additional-fields">${selectedDefs.map(d=>`<div class="additional-field-row"><div class="additional-field-name">${esc(d.name)}</div><div class="additional-field-control">${controlHtml(d,values[String(d.id_sequence)])}</div><button type="button" class="additional-remove" data-remove-def="${d.id_sequence}" title="Quitar dato adicional" aria-label="Quitar ${esc(d.name)}">${trash}</button></div>`).join('')}</div><div class="status additional-status"></div></form>`;box.querySelector('.additional-more').onclick=()=>openPicker(type);hydrateStoredFilePreviews(box).catch(console.error);box.querySelectorAll('.additional-file-open').forEach(b=>b.addEventListener('click',async()=>{try{await openStoredFile(b.dataset.filePath)}catch(err){console.error(err);const s=box.querySelector('.additional-status');if(s){s.textContent='ERROR REAL: '+(err?.message||String(err));s.className='status additional-status error'}}}));box.querySelectorAll('[data-remove-def]').forEach(b=>b.addEventListener('click',async()=>{const def=selectedDefs.find(d=>String(d.id_sequence)===String(b.dataset.removeDef));if(!def)return;try{await removeAdditionalValue(type,id,def)}catch(err){console.error(err);const s=box.querySelector('.additional-status');if(s){s.textContent='ERROR REAL: '+(err?.message||String(err));s.className='status additional-status error'}}}));const form=box.querySelector('form');form.addEventListener('submit',e=>saveAdditional(e,type,id,selectedDefs))}
 async function saveAdditional(e,type,id,defs){
   e.preventDefault();const form=e.currentTarget,status=form.querySelector('.additional-status');status.textContent='Guardando...';status.className='status additional-status additional-saving';await ensureSession();
-  const table=type==='CLIENT'?'client_data':'user_data',key=type==='CLIENT'?'client_id':'user_id',pk=type==='CLIENT'?'client_data_id':'user_data_id';
+  const table=type==='CLIENT'?'client_data':type==='USER'?'user_data':'activity_data',key=type==='CLIENT'?'client_id':type==='USER'?'user_id':'activity_id',pk=type==='CLIENT'?'client_data_id':type==='USER'?'user_data_id':'activity_data_id';
   try{
     for(const def of defs){
       const input=form.querySelector(`[data-igldata="${def.id_sequence}"]`);if(!input)continue;
@@ -388,7 +388,7 @@ async function saveAdditional(e,type,id,defs){
 
 window.managementSaveAdditional=async function(type){
   const t=String(type||'').toUpperCase();
-  if(t!=='CLIENT'&&t!=='USER')return false;
+  if(t!=='CLIENT'&&t!=='USER'&&t!=='ACTIVITY')return false;
   const id=selected[t];
   const form=document.querySelector(`[data-additional-type="${t}"]`);
   if(!id||!form)return false;
@@ -405,7 +405,7 @@ function downloadExport(blob,name){
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 function exportSafe(v){return String(v??'').replace(/[\\/:*?"<>|]+/g,'_').trim()||'registro'}
-function exportTitle(type,id){return `DATOS DEL ${type==='CLIENT'?'CLIENTE':type==='USER'?'USUARIO':'CUENTA'} ${id??''}`.trim()}
+function exportTitle(type,id){return `DATOS DEL ${type==='CLIENT'?'CLIENTE':type==='USER'?'USUARIO':type==='ACTIVITY'?'ACTIVIDAD':'CUENTA'} ${id??''}`.trim()}
 function dataUrlFromBlob(blob){return new Promise((resolve,reject)=>{const fr=new FileReader();fr.onload=()=>resolve(fr.result);fr.onerror=reject;fr.readAsDataURL(blob)})}
 async function storedImageData(value){
   const ref=decodeDriveRef(value);
@@ -492,6 +492,6 @@ window.managementExportRecord=async function({type,id,parent,format,includeAddit
   throw new Error('Formato de exportación no soportado.');
 };
 
-window.addEventListener('management:entity-selected',e=>{if(e.detail?.type==='CLIENT'||e.detail?.type==='USER'){selected[e.detail.type]=e.detail.id;chosen[e.detail.type]=new Set();chosenOwner[e.detail.type]=String(e.detail.id??'');renderFor(e.detail.type).catch(console.error)}});
+window.addEventListener('management:entity-selected',e=>{if(['CLIENT','USER','ACTIVITY'].includes(e.detail?.type)){selected[e.detail.type]=e.detail.id;chosen[e.detail.type]=new Set();chosenOwner[e.detail.type]=String(e.detail.id??'');renderFor(e.detail.type).catch(console.error)}});
 let usersWired=false;function wireUsers(){const list=document.getElementById('usersList');if(!list||usersWired)return false;usersWired=true;list.addEventListener('click',e=>{const row=e.target.closest('.client-row');if(!row)return;selected.USER=row.dataset.id;chosen.USER=new Set();renderFor('USER').catch(console.error)});list.addEventListener('keydown',e=>{const row=e.target.closest('.client-row');if(row&&(e.key==='Enter'||e.key===' ')){selected.USER=row.dataset.id;chosen.USER=new Set();renderFor('USER').catch(console.error)}});return true}
 const obs=new MutationObserver(()=>{if(wireUsers())obs.disconnect()});obs.observe(document.documentElement,{childList:true,subtree:true});wireUsers();ensureSession().then(loadDefinitions).catch(console.error);
