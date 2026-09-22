@@ -301,7 +301,7 @@ async function loadDefinitions(){
   const r=await fetch(`${DATA_API_URL}/igldata?select=id_sequence,id_parent,name,description,data_type,format,applies_to,display_order,is_active,deleted_at&deleted_at=is.null&order=display_order.asc,id_sequence.asc`,{headers:{Authorization:`Bearer ${session.token}`}});
   if(!r.ok)throw new Error(await r.text());allRows=await r.json();
 }
-function activeRow(r){return r.deleted_at==null&&(r.status?String(r.status).toUpperCase()==='A':r.is_active!==false)}
+function activeRow(r){return r.deleted_at==null&&(r.status?String(r.status).toUpperCase()==='A':!(r.is_active===false||r.is_active===0||r.is_active==='0'))}
 function applies(r,type){const a=String(r.applies_to||'ALL').toUpperCase();if(type==='CLIENT')return ['ALL','CLIENT','T','C'].includes(a);if(type==='USER')return ['ALL','USER','T','U'].includes(a);if(type==='ACTIVITY')return ['ALL','ACTIVITY','T'].includes(a);return ['ALL','ACCOUNT','T','A'].includes(a)}
 function rootRows(){return allRows.filter(r=>r.id_parent==null&&activeRow(r)&&['ADDITIONAL_FIELDS','ACCOUNT_FIELDS','CLIENT_FIELDS','USER_FIELDS','ACTIVITY_FIELDS'].includes(String(r.name||'').toUpperCase()))}
 function defsFor(type){const roots=rootRows();const allowedRootIds=new Set(roots.filter(r=>{const n=String(r.name||'').toUpperCase();return n==='ADDITIONAL_FIELDS'||(type==='CLIENT'&&n==='CLIENT_FIELDS')||(type==='USER'&&n==='USER_FIELDS')||(type==='ACTIVITY'&&n==='ACTIVITY_FIELDS')}).map(r=>String(r.id_sequence)));const seen=new Set();return allRows.filter(r=>allowedRootIds.has(String(r.id_parent))&&activeRow(r)&&applies(r,type)).filter(r=>{const k=String(r.name||'').trim().toUpperCase();if(seen.has(k))return false;seen.add(k);return true}).sort((a,b)=>(Number(a.display_order||0)-Number(b.display_order||0))||(Number(a.id_sequence)-Number(b.id_sequence)))}
@@ -329,11 +329,11 @@ function openPicker(type){const defs=defsFor(type),dlg=ensureDialog(type),alread
 async function removeAdditionalValue(type,id,def){
   await ensureSession();
   const table=type==='CLIENT'?'client_data':type==='USER'?'user_data':'activity_data',key=type==='CLIENT'?'client_id':type==='USER'?'user_id':'activity_id',pk=type==='CLIENT'?'client_data_id':type==='USER'?'user_data_id':'activity_data_id';
-  const r=await fetch(`${DATA_API_URL}/${table}?select=${pk},value_text&${key}=eq.${encodeURIComponent(id)}&igldata_id=eq.${def.id_sequence}&is_active=eq.true`,{headers:{Authorization:`Bearer ${session.token}`}});
+  const r=await fetch(`${DATA_API_URL}/${table}?select=${pk},value_text&${key}=eq.${encodeURIComponent(id)}&igldata_id=eq.${def.id_sequence}&is_active=eq.1`,{headers:{Authorization:`Bearer ${session.token}`}});
   if(!r.ok)throw new Error(await r.text());
   const rows=await r.json();
   if(rows.length){
-    const u=await fetch(`${DATA_API_URL}/${table}?${pk}=eq.${rows[0][pk]}`,{method:'PATCH',headers:{Authorization:`Bearer ${session.token}`,'Content-Type':'application/json'},body:JSON.stringify({is_active:false,updated_at:new Date().toISOString()})});
+    const u=await fetch(`${DATA_API_URL}/${table}?${pk}=eq.${rows[0][pk]}`,{method:'PATCH',headers:{Authorization:`Bearer ${session.token}`,'Content-Type':'application/json'},body:JSON.stringify({is_active:0,updated_at:new Date().toISOString()})});
     if(!u.ok)throw new Error(await u.text());
   }
   chosen[type].delete(String(def.id_sequence));
@@ -368,10 +368,10 @@ async function saveAdditional(e,type,id,defs){
         if(!validate(def,value))throw new Error(`${def.name}: formato inválido. Debe cumplir ${def.format||'el formato configurado'}`);
       }
       if(old.length){
-        const r=await fetch(`${DATA_API_URL}/${table}?${pk}=eq.${old[0][pk]}`,{method:'PATCH',headers:{Authorization:`Bearer ${session.token}`,'Content-Type':'application/json'},body:JSON.stringify({value_text:value||null,is_active:true,updated_at:new Date().toISOString()})});if(!r.ok)throw new Error(await r.text());
+        const r=await fetch(`${DATA_API_URL}/${table}?${pk}=eq.${old[0][pk]}`,{method:'PATCH',headers:{Authorization:`Bearer ${session.token}`,'Content-Type':'application/json'},body:JSON.stringify({value_text:value||null,is_active:1,updated_at:new Date().toISOString()})});if(!r.ok)throw new Error(await r.text());
         if(input.dataset.kind==='FILE'&&old[0].value_text&&old[0].value_text!==value)deleteStoredFile(old[0].value_text);
       }else if(value){
-        const payload={[key]:Number(id),igldata_id:Number(def.id_sequence),value_text:value,is_active:true};const r=await fetch(`${DATA_API_URL}/${table}`,{method:'POST',headers:{Authorization:`Bearer ${session.token}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!r.ok)throw new Error(await r.text());
+        const payload={[key]:Number(id),igldata_id:Number(def.id_sequence),value_text:value,is_active:1};const r=await fetch(`${DATA_API_URL}/${table}`,{method:'POST',headers:{Authorization:`Bearer ${session.token}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!r.ok)throw new Error(await r.text());
       }
     }
     await renderFor(type);
