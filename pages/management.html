@@ -28,13 +28,34 @@ button,input,select,textarea{font:inherit}.topbar{height:68px;background:#fff;bo
 </style>
 </head>
 <body>
-<header class="topbar"><button class="back" type="button" aria-label="Volver" onclick="history.back()">←</button><div class="brand">🌎 América <span>es Tuya</span> · Gestión</div><div class="version">V 4.1.8</div></header>
-<div class="mobile-picker"><label for="sectionSelect">Sección</label><select id="sectionSelect"><option value="account">Cuenta</option><option value="clients">Beneficiarios</option><option value="relationships">Relaciones</option><option value="configuration">Configuración</option></select></div>
+<header class="topbar"><button class="back" type="button" aria-label="Volver" onclick="history.back()">←</button><div class="brand">🌎 América <span>es Tuya</span> · Gestión</div><div class="version">V 4.2.0</div></header>
+<div class="mobile-picker"><label for="sectionSelect">Sección</label><select id="sectionSelect"><option value="account">Cuenta</option><option value="clients">Beneficiarios</option><option value="activities">Actividades</option><option value="relationships">Relaciones</option><option value="configuration">Configuración</option></select></div>
 <div class="shell">
-<aside class="sidebar"><div class="side-title">Gestión</div><nav class="nav" aria-label="Gestión"><a href="#account" class="active" data-section="account"><span class="icon">👤</span><span>Cuenta</span></a><a href="#clients" data-section="clients"><span class="icon">👥</span><span>Beneficiarios</span></a><a href="#relationships" data-section="relationships"><span class="icon">🤝</span><span>Relaciones</span></a><a href="#configuration" data-section="configuration"><span class="icon">⚙️</span><span>Configuración</span></a></nav></aside>
+<aside class="sidebar"><div class="side-title">Gestión</div><nav class="nav" aria-label="Gestión"><a href="#account" class="active" data-section="account"><span class="icon">👤</span><span>Cuenta</span></a><a href="#clients" data-section="clients"><span class="icon">👥</span><span>Beneficiarios</span></a><a href="#activities" data-section="activities"><span class="icon">🗓️</span><span>Actividades</span></a><a href="#relationships" data-section="relationships"><span class="icon">🤝</span><span>Relaciones</span></a><a href="#configuration" data-section="configuration"><span class="icon">⚙️</span><span>Configuración</span></a></nav></aside>
 <main class="content">
 <section id="account" class="card section active"><div class="section-head section-title-redundant"><h1>Cuenta</h1></div><div class="toolstrip" data-tools="account"></div><div id="accountStatus" class="status"></div><div id="accountDetails" class="details" hidden><div class="label">Nombre</div><div id="displayName" class="value"></div><div class="label">Correo</div><div id="email" class="value"></div><div class="label">Fecha de creación</div><div id="createdAt" class="value"></div><div class="label">Último acceso</div><div id="lastLoginAt" class="value"></div><div class="label">Estado</div><div id="isActive" class="value"></div></div><div class="additional-box"><div class="additional-title">Datos adicionales</div><div class="additional-body" id="accountAdditional">—</div></div></section>
 <section id="clients" class="card section"><div class="section-head section-title-redundant"><h1>Beneficiarios</h1></div><div class="toolstrip" data-tools="clients"></div><div id="clientStatus" class="status"></div><div id="clientSearch" class="searchbar"><input id="clientSearchText" type="search" placeholder="Buscar"><select id="clientFilter"><option value="all">Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select></div><form id="clientForm" class="client-form"><input id="clientId" type="hidden"><div class="form-grid"><div class="field full"><label for="clientName">Nombre</label><input id="clientName" maxlength="150" required></div><div class="field"><label for="clientEmail">Correo</label><input id="clientEmail" type="email" maxlength="320"></div><div class="field"><label for="clientPhone">Teléfono</label><input id="clientPhone" maxlength="40"></div><div class="field"><label for="clientCategory">Tipo relación</label><select id="clientCategory"><option value="">Seleccione…</option></select></div><div class="field"><label for="clientActive">Estado</label><select id="clientActive"><option value="true">Activo</option><option value="false">Inactivo</option></select></div></div><div class="form-actions"><button id="cancelClientBtn" class="secondary" type="button">Cancelar</button></div></form><div id="clientsList" class="clients-list"><div class="no-items">Cargando…</div></div><div class="additional-box"><div class="additional-title">Datos adicionales</div><div class="additional-body" id="clientAdditional">Selecciona un beneficiario.</div></div></section>
+
+<section id="activities" class="card section">
+  <div class="section-head section-title-redundant"><h1>Actividades</h1></div>
+  <div class="toolstrip" id="activityTools"></div>
+  <div id="activityStatus" class="status"></div>
+  <div id="activitySearch" class="searchbar"><input id="activitySearchText" type="search" placeholder="Buscar actividad"><select id="activityFilter"><option value="all">Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select></div>
+  <form id="activityForm" class="client-form">
+    <input id="activityId" type="hidden">
+    <div class="form-grid">
+      <div class="field"><label for="activityClient">Beneficiario</label><select id="activityClient" required><option value="">Seleccione…</option></select></div>
+      <div class="field"><label for="activityResponsible">Responsable</label><select id="activityResponsible"><option value="">Seleccione…</option></select></div>
+      <div class="field"><label for="activityStart">Fecha inicio</label><input id="activityStart" type="datetime-local" required></div>
+      <div class="field"><label for="activityEnd">Fecha fin</label><input id="activityEnd" type="datetime-local" required></div>
+      <div class="field full"><label for="activityDescription">Descripción</label><textarea id="activityDescription" required placeholder="Descripción de la actividad"></textarea></div>
+      <div class="field"><label for="activityActive">Estado</label><select id="activityActive"><option value="true">Activo</option><option value="false">Inactivo</option></select></div>
+    </div>
+    <div class="form-actions"><button id="cancelActivityBtn" class="secondary" type="button">Cancelar</button></div>
+  </form>
+  <div id="activitiesList" class="clients-list"><div class="no-items">Cargando…</div></div>
+  <div class="additional-box"><div class="additional-title">Datos adicionales</div><div class="additional-body" id="activityAdditional">Selecciona una actividad.</div></div>
+</section>
 
 <section id="relationships" class="card section"><div class="section-head"><h1>Relaciones</h1></div><div class="placeholder">—</div></section>
 <section id="configuration" class="card section"><div class="placeholder">—</div></section>
@@ -43,6 +64,7 @@ button,input,select,textarea{font:inherit}.topbar{height:68px;background:#fff;bo
 <script type="module" src="../js/management-beneficiary-category.js?v=4.1.4"></script>
 <script type="module" src="../js/management-config.js"></script>
 <script type="module" src="../js/management-config-ui.js"></script>
-<script type="module" src="../js/management-additional.js?v=4.1.8"></script>
+<script type="module" src="../js/management-activities.js?v=4.2.0"></script>
+<script type="module" src="../js/management-additional.js?v=4.2.0"></script>
 <script type="module" src="../js/management-report.js"></script>
 </body></html>
